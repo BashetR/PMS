@@ -1,0 +1,67 @@
+<div class="login-box">
+    <!-- /.login-logo -->
+    <!-- <div class="login-logo">
+        <img src="{{this.appLogo}}">
+    </div> -->
+    <div class="login-logo">
+        <a href=""><b>PMS</b></a>
+    </div>
+
+    <div class="card">
+        <div class="card-body login-card-body">
+            <p class="login-box-msg">Sign in to start your session</p>
+
+            <form [formGroup]="loginForm" (ngSubmit)="login()">
+                <div class="input-group mb-3">
+                    <input type="email" [ngClass]="{'is-invalid': loginForm.get('Email')?.errors && loginForm.get('Email')?.touched}" class="form-control" formControlName="Email" placeholder="Email" />
+                    <div class="input-group-append">
+                        <div class="input-group-text">
+                            <span class="fas fa-envelope"></span>
+                        </div>
+                    </div>
+
+                    <div class="invalid-feedback"
+                        *ngIf="loginForm.get('Email')?.hasError('required') && loginForm.get('Email')?.touched">
+                        Please choose a Email
+                    </div>
+
+                    <div class="invalid-feedback"
+                        *ngIf="loginForm.get('Email')?.hasError('Email') && loginForm.get('Email')?.touched">
+                        Please provide valid Email
+                    </div>
+                </div>
+
+                <div class="input-group mb-3">
+                    <input type="password" [ngClass]="{'is-invalid': loginForm.get('Password')?.errors && loginForm.get('Password')?.touched}" class="form-control" formControlName="Password" placeholder="Password" />
+                    <div class="input-group-append">
+                        <div class="input-group-text">
+                            <span class="fas fa-lock"></span>
+                        </div>
+                    </div>
+
+                    <br />
+
+                    <div class="invalid-feedback"
+                        *ngIf="loginForm.get('Password')?.hasError('required') && loginForm.get('Password')?.touched">
+                        Password is required
+                    </div>
+                </div>
+
+                <div class="input-group mb-3">
+                    <button type="submit" class="btn btn-primary btn-block">
+                        Sign In
+                    </button>
+                </div>
+            </form>
+
+            <p class="mb-1">
+                <a routerLink="/forgot-password">I forgot my password</a>
+            </p>
+            <p class="mb-0">
+                <a routerLink="/register" style="cursor: pointer;" class="text-center">Register a new membership</a>
+            </p>
+        </div>
+    </div>
+    <!-- /.card -->
+</div>
+<!-- /.login-box -->

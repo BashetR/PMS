@@ -1,0 +1,124 @@
+<div class="container-fluid">
+
+    <!-- HEADER -->
+    <div class="row mb-3">
+        <div class="col">
+            <h2>Profile Management</h2>
+        </div>
+    </div>
+
+    <div class="row">
+
+        <!-- FORM CARD -->
+        <div class="col-md-4">
+
+            <div class="card card-primary">
+
+                <div class="card-header">
+                    <h3 class="card-title">
+                        {{ isEdit ? 'Edit Profile' : 'Create Profile' }}
+                    </h3>
+                </div>
+
+                <div class="card-body">
+
+                    <input class="form-control mb-2" placeholder="Full Name" [(ngModel)]="form.full_name">
+
+                    <input class="form-control mb-2" placeholder="Email" [(ngModel)]="form.email">
+
+                    <select class="form-control mb-2" [(ngModel)]="form.role">
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+
+                    <div class="form-check mb-2">
+                        <input type="checkbox" [(ngModel)]="form.is_active" class="form-check-input">
+                        <label>Active</label>
+                    </div>
+
+                </div>
+
+                <div class="card-footer">
+
+                    <button class="btn btn-success" *ngIf="!isEdit" (click)="createProfile()">
+                        Create
+                    </button>
+
+                    <button class="btn btn-warning" *ngIf="isEdit" (click)="updateProfile()">
+                        Update
+                    </button>
+
+                    <button class="btn btn-secondary" (click)="resetForm()">
+                        Reset
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- TABLE -->
+        <div class="col-md-8">
+
+            <div class="card">
+
+                <div class="card-header">
+                    <h3 class="card-title">Profiles List</h3>
+                </div>
+
+                <div class="card-body p-0">
+
+                    <table class="table table-bordered table-hover mb-0">
+
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+
+                            <tr *ngFor="let p of profiles">
+
+                                <td>{{ p.full_name }}</td>
+                                <td>{{ p.email }}</td>
+                                <td>{{ p.role }}</td>
+
+                                <td>
+                                    <span [class.text-success]="p.is_active" [class.text-danger]="!p.is_active">
+                                        {{ p.is_active ? 'Active' : 'Inactive' }}
+                                    </span>
+                                </td>
+
+                                <td>
+
+                                    <button class="btn btn-sm btn-info" (click)="edit(p)">
+                                        Edit
+                                    </button>
+
+                                    <button class="btn btn-sm btn-danger" (click)="deleteProfile(p.id)">
+                                        Delete
+                                    </button>
+
+                                </td>
+
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
