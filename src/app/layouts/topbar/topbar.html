@@ -1,0 +1,73 @@
+<nav class="app-header navbar navbar-expand bg-body shadow-sm">
+    <div class="container-fluid">
+
+        <!-- LEFT MENU -->
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a routerLink="/dashboard" class="nav-link">
+                    <i class="bi bi-house me-1"></i> Dashboard
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a routerLink="/users" class="nav-link">
+                    <i class="bi bi-people me-1"></i> Users
+                </a>
+            </li>
+        </ul>
+
+        <!-- RIGHT MENU -->
+        <ul class="navbar-nav ms-auto align-items-center">
+
+            <!-- Notifications -->
+            <li class="nav-item dropdown">
+                <a class="nav-link" data-bs-toggle="dropdown">
+                    <i class="bi bi-bell-fill"></i>
+                    <span class="badge bg-warning notification-badge">3</span>
+                </a>
+
+                <div class="dropdown-menu dropdown-menu-end shadow">
+                    <span class="dropdown-item text-muted">No new notifications</span>
+                </div>
+            </li>
+
+            <!-- USER MENU -->
+            <li class="nav-item dropdown user-menu">
+
+                <a class="nav-link dropdown-toggle d-flex align-items-center" data-bs-toggle="dropdown">
+
+                    <img [src]="avatar" class="user-image rounded-circle me-2" />
+                    <span class="d-none d-md-inline">{{ userName }}</span>
+
+                </a>
+
+                <ul class="dropdown-menu dropdown-menu-lg dropdown-menu-end shadow">
+
+                    <!-- USER INFO -->
+                    <li class="user-header text-bg-primary text-center p-3">
+                        <img [src]="avatar" class="rounded-circle shadow mb-2 profile-img" />
+
+                        <p class="mb-0 fw-bold">{{ userName }}</p>
+                        <small>{{ userEmail }}</small>
+                    </li>
+
+                    <!-- ACTIONS -->
+                    <li class="user-footer d-flex justify-content-between p-2">
+
+                        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="goProfile()">
+                            <i class="bi bi-person"></i> Profile
+                        </button>
+
+                        <button type="button" class="btn btn-outline-danger btn-sm" (click)="logout()">
+                            <i class="bi bi-box-arrow-right"></i> Logout
+                        </button>
+
+                    </li>
+
+                </ul>
+            </li>
+
+        </ul>
+
+    </div>
+</nav>

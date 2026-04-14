@@ -1,0 +1,137 @@
+<div class="register-box">
+    <div class="login-logo">
+        <a href=""><b>PMS</b></a>
+    </div>
+
+    <!-- <div class="card-header text-center">
+        <img src="{{this.appLogo}}">
+    </div> -->
+
+    <div class="card" *ngIf="!registerStatus">
+        <div class="card-body register-card-body">
+            <p class="login-box-msg">
+                Register a new membership
+            </p>
+
+            <form [formGroup]="registerForm" (ngSubmit)="register()">
+                <div class="input-group mb-3">
+                    <input [ngClass]="{'is-invalid': registerForm.get('UserName')?.errors && registerForm.get('UserName')?.touched}" class="form-control" type="text" formControlName="UserName" placeholder="User Name" />
+                    <div class="input-group-append">
+                        <div class="input-group-text">
+                            <span class="fas fa-user"></span>
+                        </div>
+                    </div>
+
+                    <div class="invalid-feedback"
+                        *ngIf="registerForm.get('UserName')?.hasError('required') && registerForm.get('UserName')?.touched">
+                        Please choose a UserName
+                    </div>
+                </div>
+
+                <div class="input-group mb-3">
+                    <input type="email" [ngClass]="{'is-invalid': registerForm.get('Email')?.errors && registerForm.get('Email')?.touched}" class="form-control" formControlName="Email" placeholder="Email" />
+                    <div class="input-group-append">
+                        <div class="input-group-text">
+                            <span class="fas fa-envelope"></span>
+                        </div>
+                    </div>
+
+                    <div class="invalid-feedback"
+                        *ngIf="registerForm.get('Email')?.hasError('required') && registerForm.get('Email')?.touched">
+                        Please choose a Email
+                    </div>
+
+                    <div class="invalid-feedback"
+                        *ngIf="registerForm.get('Email')?.hasError('Email') && registerForm.get('Email')?.touched">
+                        Please provide valid Email
+                    </div>
+                </div>
+
+                <div *ngIf="!isAssociate">
+                    <div class="input-group mb-3">
+                        <input type="password" [ngClass]="{'is-invalid': registerForm.get('Password')?.errors && registerForm.get('Password')?.touched}" pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}" class="form-control" formControlName="Password"
+                            placeholder="Password" />
+                        <div class="input-group-append">
+                            <div class="input-group-text">
+                                <span class="fas fa-lock"></span>
+                            </div>
+                        </div>
+
+                        <br />
+                        
+                        <div class="invalid-feedback"
+                            *ngIf="registerForm.get('Password')?.hasError('required') && registerForm.get('Password')?.touched">
+                            Password is required
+                        </div>
+
+                        <div class="invalid-feedback"
+                            *ngIf="registerForm.get('Password')?.hasError('pattern') && registerForm.get('Password')?.touched">
+                            Password must contain at least one number and one uppercase and lowercase letter
+                        </div>
+
+                        <div class="invalid-feedback"
+                            *ngIf="registerForm.get('Password')?.hasError('minlength') && registerForm.get('Password')?.touched">
+                            Password must be at least 6 characters
+                        </div>
+
+                        <div class="invalid-feedback"
+                            *ngIf="registerForm.get('Password')?.hasError('maxlength') && registerForm.get('Password')?.touched">
+                            Password cannot exceed 8 characters
+                        </div>
+                    </div>
+
+                    <div class="input-group mb-3">
+                        <input type="password" [ngClass]="{'is-invalid': (registerForm.get('ConfirmPassword')?.errors && registerForm.get('ConfirmPassword')?.touched) || (registerForm.get('ConfirmPassword')?.touched && registerForm.hasError('mismatch'))}" class="form-control" formControlName="ConfirmPassword" placeholder="Retype Password" />
+                        <div class="input-group-append">
+                            <div class="input-group-text">
+                                <span class="fas fa-lock"></span>
+                            </div>
+                        </div>
+
+                        <div class="invalid-feedback"
+                            *ngIf="registerForm.get('ConfirmPassword')?.hasError('required') && registerForm.get('ConfirmPassword')?.touched">
+                            Password is required
+                        </div>
+
+                        <div class="invalid-feedback"
+                            *ngIf="registerForm.get('ConfirmPassword')?.touched && registerForm.hasError('mismatch')">
+                            Password must match
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-8">
+                        <div class="icheck-primary">
+                            <input type="checkbox" id="agreeTerms" name="terms" value="agree">
+                            <label for="agreeTerms">
+                                I agree to the <a href="#">terms</a>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="col-4">
+                        <button type="submit" class="btn btn-primary btn-block">
+                            Register
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <a routerLink="/login" class="text-center">I already have a membership</a>
+        </div>
+    </div>
+
+    <div class="help-block" *ngIf="registerStatus">
+        <div class="alert alert-success alert-dismissible">
+            <h5><i class="icon fas fa-check"></i> Congratulations! You are now registered.</h5>
+            <p *ngIf="!emailVerification">A confirmation link has been sent to your email address.</p>
+        </div>
+
+        <div>
+            <a routerLink="/login" class="btn btn-block btn-primary">Login</a>
+        </div>
+    </div>
+    <!-- <div class="lockscreen-footer text-center"><span [innerHTML]="copyright"></span></div> -->
+    <!-- /.card -->
+</div>

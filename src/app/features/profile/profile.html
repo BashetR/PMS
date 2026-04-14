@@ -1,0 +1,122 @@
+<div class="content-wrapper p-3">
+    <div class="row">
+        <!-- LEFT SIDE -->
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <img [src]="previewUrl || 'assets/img/avatar5.png'" class="profile-img mb-2" />
+                    <h5>{{ profileForm.value.username }}</h5>
+                    <p class="text-muted">{{ profileForm.value.email }}</p>
+
+                    <ul class="list-group text-start mt-3">
+                        <li class="list-group-item">
+                            Country: {{ profileForm.value.country }}
+                        </li>
+                        <li class="list-group-item">
+                            Gender: {{ profileForm.value.gender }}
+                        </li>
+                        <li class="list-group-item">
+                            Phone: {{ profileForm.value.phone }}
+                        </li>
+                    </ul>
+
+                </div>
+            </div>
+
+        </div>
+
+        <!-- RIGHT SIDE -->
+        <div class="col-md-9">
+
+            <div class="card">
+                <div class="card-header">
+                    <ul class="nav nav-pills">
+
+                        <li class="nav-item">
+                            <button class="nav-link" [class.active]="activeTab==='profile'" (click)="setTab('profile')">
+                                Edit Profile
+                            </button>
+                        </li>
+
+                        <li class="nav-item">
+                            <button class="nav-link" [class.active]="activeTab==='password'"
+                                (click)="setTab('password')">
+                                Change Password
+                            </button>
+                        </li>
+
+                    </ul>
+                </div>
+
+                <div class="card-body">
+
+                    <!-- PROFILE TAB -->
+                    <div *ngIf="activeTab==='profile'">
+
+                        <form [formGroup]="profileForm" (ngSubmit)="updateProfile()">
+
+                            <div class="row">
+
+                                <div class="col-12 mb-3">
+                                    <input type="file" class="form-control" (change)="fileProgress($event)">
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <input class="form-control" placeholder="Username" formControlName="username">
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <input class="form-control" placeholder="Email" formControlName="email">
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <input class="form-control" placeholder="Full Name" formControlName="full_name">
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <input class="form-control" placeholder="Country" formControlName="country">
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <select class="form-control" formControlName="gender">
+                                        <option value="">Select Gender</option>
+                                        <option>Male</option>
+                                        <option>Female</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <input class="form-control" placeholder="Phone" formControlName="phone">
+                                </div>
+
+                            </div>
+
+                            <button class="btn btn-primary">Save</button>
+
+                        </form>
+
+                    </div>
+
+                    <!-- PASSWORD TAB -->
+                    <div *ngIf="activeTab==='password'">
+
+                        <form [formGroup]="passwordForm" (ngSubmit)="changePassword()">
+
+                            <div class="mb-3">
+                                <input type="password" class="form-control" placeholder="New Password"
+                                    formControlName="newPassword">
+                            </div>
+
+                            <div class="mb-3">
+                                <input type="password" class="form-control" placeholder="Confirm Password"
+                                    formControlName="confirmPassword">
+                            </div>
+
+                            <button class="btn btn-danger">Update Password</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
