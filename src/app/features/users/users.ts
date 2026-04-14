@@ -123,9 +123,13 @@ export class Users implements OnInit {
       } else {
 
         // 🔥 CREATE NEW USER (NO UPSERT → FIX FOR YOUR ISSUE)
+        const { data: authUser } = await this.supabase.client.auth.getUser();
         const { error } = await this.supabase.client
           .from('profiles')
-          .insert([value]);
+          .insert([{
+            id: authUser.user?.id,
+            ...value
+          }]);
 
         if (error) throw error;
       }

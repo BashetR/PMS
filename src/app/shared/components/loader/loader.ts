@@ -14,19 +14,19 @@ import { CommonModule } from '@angular/common';
 
 export class Loader implements OnInit, OnDestroy {
   show = false;
-  private subscription?: Subscription;
+  // private subscription?: Subscription;
 
   constructor(public loaderService: LoaderService) { }
 
   ngOnInit() {
-    this.subscription = this.loaderService.loaderState$.subscribe(
-      (state: LoaderState) => {
-        this.show = state.show;
-      }
-    );
+    // this.subscription = this.loaderService.loaderState$.subscribe(
+    //   (state: LoaderState) => {
+    //     this.show = state.show;
+    //   }
+    // );
   }
 
   ngOnDestroy() {
-    this.subscription?.unsubscribe();
+    // this.subscription?.unsubscribe();
   }
 }

@@ -8,7 +8,7 @@ import { LoaderService } from '../services/loader.service';
     providedIn: 'root'
 })
 
-export class LoaderInterceptorService implements HttpInterceptor {
+export class LoaderInterceptor implements HttpInterceptor {
 
     constructor(private loaderService: LoaderService) { }
 

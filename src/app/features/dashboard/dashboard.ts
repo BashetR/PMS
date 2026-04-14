@@ -22,7 +22,7 @@ export class Dashboard implements OnInit {
   ) { }
 
   async ngOnInit(): Promise<void> {
-    await this.loadUser();
+    // await this.loadUser();
     await this.loadStats();
   }
 
@@ -40,41 +40,37 @@ export class Dashboard implements OnInit {
     this.totalUsers = data?.length ?? 0;
   }
 
-  // ✅ LOAD AUTH USER + PROFILE
-  async loadUser(): Promise<void> {
-    const { data, error } = await this.supabase.client.auth.getUser();
+  // // ✅ LOAD AUTH USER + PROFILE
+  // async loadUser(): Promise<void> {
+  //   const { data, error } = await this.supabase.client.auth.getUser();
+  //   if (error || !data?.user) {
+  //     console.error('Auth error:', error);
+  //     this.router.navigate(['/login']);
+  //     return;
+  //   }
 
-    if (error || !data?.user) {
-      console.error('Auth error:', error);
-      this.router.navigate(['/login']);
-      return;
-    }
+  //   this.user = data.user;
+  //   const { data: profile, error: profileError } = await this.supabase.client
+  //     .from('profiles')
+  //     .select('*')
+  //     .eq('id', this.user.id)
+  //     .maybeSingle();
+  //   if (profileError) {
+  //     console.error('Profile error:', profileError);
+  //     return;
+  //   }
 
-    this.user = data.user;
+  //   // if profile doesn't exist → create it once
+  //   if (!profile) {
+  //     await this.supabase.client
+  //       .from('profiles')
+  //       .upsert({
+  //         id: this.user.id,
+  //         email: this.user.email
+  //       }, { onConflict: 'id' });
 
-    const { data: profile, error: profileError } = await this.supabase.client
-      .from('profiles')
-      .select('*')
-      .eq('id', this.user.id)
-      .maybeSingle(); // ✅ SAFE (no crash if null)
-
-    if (profileError) {
-      console.error('Profile error:', profileError);
-      return;
-    }
-
-    // if profile doesn't exist → create it once
-    if (!profile) {
-      await this.supabase.client
-        .from('profiles')
-        .upsert({
-          id: this.user.id,
-          email: this.user.email
-        }, { onConflict: 'id' });
-
-      return this.loadUser(); // reload after insert
-    }
-
-    this.profile = profile;
-  }
+  //     return this.loadUser();
+  //   }
+  //   this.profile = profile;
+  // }
 }

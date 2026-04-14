@@ -9,7 +9,7 @@ import { SupabaseService } from './supabase.service';
 })
 
 export class Auth {
-  private baseUrl = environment.apiUrl;
+  private baseUrl = environment.supabaseUrl;
   private accountUrl = this.baseUrl +  'Account/';
 
   constructor(private http: HttpClient, private router: Router, private supabaseService: SupabaseService) {}
