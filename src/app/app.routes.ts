@@ -2,10 +2,10 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth-guard';
 
 export const routes: Routes = [
-  // 🔓 Public Routes
+  // 🔓 Public Routes (Auth)
   {
     path: '',
-    pathMatch: "full",
+    pathMatch: 'full',
     loadComponent: () => import('./features/auth/login/login').then(m => m.Login),
   },
   {
@@ -29,27 +29,30 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/confirm-email/confirm-email').then(m => m.ConfirmEmail),
   },
 
-  // 🔐 Protected Routes (IMPORTANT)
+  // 🔐 Protected Layout
   {
-    path: 'dashboard',
-    loadComponent: () => import('./features/dashboard/dashboard/dashboard').then(m => m.Dashboard),
-    canActivate: [authGuard]
+    path: '',
+    loadComponent: () => import('./layouts/main-layout/main-layout').then(m => m.MainLayout),
+    canActivate: [authGuard],
+    children: [
+      {
+        path: 'dashboard',
+        loadComponent: () => import('./features/dashboard/dashboard').then(m => m.Dashboard),
+      },
+      {
+        path: 'profile',
+        loadComponent: () => import('./features/profile/profile').then(m => m.Profile),
+      },
+      {
+        path: 'users',
+        loadComponent: () => import('./features/users/users').then(m => m.Users),
+      },
+      // {
+      //   path: 'admin',
+      //   loadChildren: () => import('./features/admin/admin.routes').then(m => m.ADMIN_ROUTES),
+      // }
+    ]
   },
-  {
-    path: 'profile',
-    loadComponent: () => import('./shared/components/profile/profile').then(m => m.Profile),
-    canActivate: [authGuard]
-  },
-  {
-    path: 'admin',
-    loadChildren: () => import('./features/admin/admin.routes').then(m => m.ADMIN_ROUTES),
-    canActivate: [authGuard]
-  },
-  // {
-  //   path: 'users',
-  //   loadComponent: () => import('./features/users/users').then(m => m.Users),
-  //   canActivate: [authGuard]
-  // },
 
   // ❌ 404
   {
