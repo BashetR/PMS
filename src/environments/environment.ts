@@ -6,10 +6,10 @@ export const environment = {
   savefailedMessage: 'data saved failed. Please Input required data to save.',
   deletefailedMessage: 'data failed to delete.',
   deleteMessage: 'data deleted successfully.',
-  supabaseUrl: "https://crieartugzavkomxedjf.supabase.co",
-  supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNyaWVhcnR1Z3phdmtvbXhlZGpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1ODQyNjksImV4cCI6MjA5MTE2MDI2OX0.hbe6V5vxMaIs8A_6r7BtMr0JS1OPTCyZsqjvaKJ1pyo',
+  supabaseUrl: "https://oieapxqkafnbwkotrpmw.supabase.co",
+  supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pZWFweHFrYWZuYndrb3RycG13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2Mzc2NTIsImV4cCI6MjA5MTIxMzY1Mn0.V8mcOAQPgHHuhBYByT91TYwqqaOJdJbgCDmJ5PcYFtU',
   logo: 'assets/images/logo/logo.png',
-  authRedirectUrl: 'http://localhost:4200/reset-password',
+  authRedirectUrl: 'https://pms-azsn-l1uyire70-sanzidtayefs-projects.vercel.app/reset-password',
 
   // Developer Information
   company: '',
