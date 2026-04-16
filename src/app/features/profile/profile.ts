@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { CommonModule } from '@angular/common';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { Auth } from '../../core/services/auth.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-profile',
@@ -21,6 +22,7 @@ export class Profile implements OnInit {
 
   previewUrl: string | null = null;
   activeTab: string = 'profile';
+  pro_img = environment.proImg;
 
   constructor(
     private fb: FormBuilder,
