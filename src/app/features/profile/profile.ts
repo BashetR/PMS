@@ -12,13 +12,15 @@ import { environment } from '../../../environments/environment';
   templateUrl: './profile.html',
   styleUrls: ['./profile.css']
 })
-export class Profile implements OnInit {
 
+export class Profile implements OnInit {
   profileForm!: FormGroup;
   passwordForm!: FormGroup;
 
   user: any;
   profileData: any;
+
+  roles: any[] = [];   // ✅ ROLE LIST
 
   previewUrl: string | null = null;
   activeTab: string = 'profile';
@@ -33,6 +35,7 @@ export class Profile implements OnInit {
   ngOnInit(): void {
     this.initForm();
     this.loadUser();
+    this.loadRoles(); // ✅ LOAD ROLES
   }
 
   // =========================
@@ -40,18 +43,40 @@ export class Profile implements OnInit {
   // =========================
   initForm(): void {
     this.profileForm = this.fb.group({
-      username: ['', Validators.required],
+      username: [''],
       email: ['', [Validators.required, Validators.email]],
-      full_name: ['', Validators.required],
-      country: ['', Validators.required],
-      gender: ['', Validators.required],
-      phone: ['', Validators.required]
+      full_name: [''],
+      country: [''],
+      gender: [''],
+      phone: [''],
+
+      // ✅ ROLE FIELD
+      role: ['', Validators.required],
+
+      doctor_reg_no: ['']
     });
 
     this.passwordForm = this.fb.group({
       newPassword: ['', [Validators.required, Validators.minLength(6)]],
       confirmPassword: ['', Validators.required]
     });
+  }
+
+  // =========================
+  // LOAD ROLES FROM DB
+  // =========================
+  async loadRoles() {
+    const { data, error } = await this.supabase.client
+      .from('role')
+      .select('id, role_name')
+      .eq('status', true)
+      .order('role_name', { ascending: true });
+
+    if (!error) {
+      this.roles = data || [];
+    } else {
+      console.error('Role load error:', error);
+    }
   }
 
   // =========================
@@ -75,17 +100,19 @@ export class Profile implements OnInit {
         return;
       }
 
-      // CREATE PROFILE IF NOT EXISTS
+      // CREATE IF NOT EXISTS
       if (!profile) {
         const { error: insertError } = await this.supabase.client
           .from('profiles')
           .insert({
             id: user.id,
-            email: user.email
+            email: user.email,
+            role: null,
+            is_active: true
           });
 
         if (insertError) {
-          console.error('Profile create error:', insertError);
+          console.error(insertError);
           return;
         }
 
@@ -101,13 +128,15 @@ export class Profile implements OnInit {
         full_name: profile.full_name || '',
         country: profile.country || '',
         gender: profile.gender || '',
-        phone: profile.phone || ''
+        phone: profile.phone || '',
+        role: profile.role || '',          // ✅ ROLE
+        doctor_reg_no: profile.doctor_reg_no || ''
       });
 
       this.previewUrl = profile.avatar_url || null;
 
     } catch (err) {
-      console.error('Unexpected error:', err);
+      console.error(err);
     }
   }
 
@@ -138,34 +167,40 @@ export class Profile implements OnInit {
 
     const { error } = await this.supabase.client
       .from('profiles')
-      .upsert(
-        {
-          id: user.id,
-          username: data.username,
-          full_name: data.full_name,
-          country: data.country,
-          gender: data.gender,
-          phone: data.phone,
-          email: user.email,
-          avatar_url: this.previewUrl
-        },
-        {
-          onConflict: 'id'
-        }
-      );
+      .upsert({
+        id: user.id,
+
+        username: data.username,
+        full_name: data.full_name,
+        country: data.country,
+        gender: data.gender,
+        phone: data.phone,
+
+        email: user.email,
+
+        // ✅ ROLE SAVE
+        role: data.role,
+
+        doctor_reg_no: data.doctor_reg_no || null,
+
+        avatar_url: this.previewUrl,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'id'
+      });
 
     if (error) {
-      console.error('Update error:', error);
-      alert('Profile update failed');
+      console.error(error);
+      alert('Update failed');
       return;
     }
 
-    alert('Profile updated successfully');
-    await this.loadUser();
+    alert('Profile updated');
+    this.loadUser();
   }
 
   // =========================
-  // CHANGE PASSWORD
+  // PASSWORD
   // =========================
   async changePassword(): Promise<void> {
     const { newPassword, confirmPassword } = this.passwordForm.value;
@@ -180,17 +215,16 @@ export class Profile implements OnInit {
     });
 
     if (error) {
-      console.error('Password error:', error);
       alert('Password update failed');
       return;
     }
 
-    alert('Password updated successfully');
+    alert('Password updated');
     this.passwordForm.reset();
   }
 
   // =========================
-  // TAB SWITCH
+  // TAB
   // =========================
   setTab(tab: string): void {
     this.activeTab = tab;
