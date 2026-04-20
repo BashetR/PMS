@@ -1,23 +1,43 @@
 <div class="content-wrapper p-3">
     <div class="row">
+
+        <!-- ========================= -->
         <!-- LEFT SIDE -->
+        <!-- ========================= -->
         <div class="col-md-3">
+
             <div class="card text-center">
                 <div class="card-body">
+
                     <img [src]="previewUrl || pro_img" class="profile-img mb-2" />
-                    <h5>{{ profileForm.value.username }}</h5>
+
+                    <h5>{{ profileForm.value.username || 'No Username' }}</h5>
                     <p class="text-muted">{{ profileForm.value.email }}</p>
 
                     <ul class="list-group text-start mt-3">
+
                         <li class="list-group-item">
-                            Country: {{ profileForm.value.country }}
+                            Country: {{ profileForm.value.country || '-' }}
                         </li>
+
                         <li class="list-group-item">
-                            Gender: {{ profileForm.value.gender }}
+                            Gender: {{ profileForm.value.gender || '-' }}
                         </li>
+
                         <li class="list-group-item">
-                            Phone: {{ profileForm.value.phone }}
+                            Phone: {{ profileForm.value.phone || '-' }}
                         </li>
+
+                        <!-- ✅ ROLE DISPLAY -->
+                        <li class="list-group-item">
+                            Role: {{ profileForm.value.role || '-' }}
+                        </li>
+
+                        <!-- ✅ DOCTOR REG NO DISPLAY -->
+                        <li class="list-group-item">
+                            Doctor Reg No: {{ profileForm.value.doctor_reg_no || '-' }}
+                        </li>
+
                     </ul>
 
                 </div>
@@ -25,21 +45,28 @@
 
         </div>
 
+        <!-- ========================= -->
         <!-- RIGHT SIDE -->
+        <!-- ========================= -->
         <div class="col-md-9">
 
             <div class="card">
+
+                <!-- ========================= -->
+                <!-- TABS -->
+                <!-- ========================= -->
                 <div class="card-header">
                     <ul class="nav nav-pills">
 
                         <li class="nav-item">
-                            <button class="nav-link" [class.active]="activeTab==='profile'" (click)="setTab('profile')">
+                            <button class="nav-link" [class.active]="activeTab === 'profile'"
+                                (click)="setTab('profile')">
                                 Edit Profile
                             </button>
                         </li>
 
                         <li class="nav-item">
-                            <button class="nav-link" [class.active]="activeTab==='password'"
+                            <button class="nav-link" [class.active]="activeTab === 'password'"
                                 (click)="setTab('password')">
                                 Change Password
                             </button>
@@ -48,57 +75,96 @@
                     </ul>
                 </div>
 
+                <!-- ========================= -->
+                <!-- BODY -->
+                <!-- ========================= -->
                 <div class="card-body">
 
+                    <!-- ========================= -->
                     <!-- PROFILE TAB -->
-                    <div *ngIf="activeTab==='profile'">
+                    <!-- ========================= -->
+                    <div *ngIf="activeTab === 'profile'">
 
                         <form [formGroup]="profileForm" (ngSubmit)="updateProfile()">
 
                             <div class="row">
 
+                                <!-- IMAGE -->
                                 <div class="col-12 mb-3">
                                     <input type="file" class="form-control" (change)="fileProgress($event)">
                                 </div>
 
+                                <!-- USERNAME -->
                                 <div class="col-md-6 mb-3">
                                     <input class="form-control" placeholder="Username" formControlName="username">
                                 </div>
 
+                                <!-- EMAIL -->
                                 <div class="col-md-6 mb-3">
-                                    <input class="form-control" placeholder="Email" formControlName="email">
+                                    <input class="form-control" placeholder="Email" formControlName="email" readonly>
                                 </div>
 
+                                <!-- FULL NAME -->
                                 <div class="col-md-6 mb-3">
                                     <input class="form-control" placeholder="Full Name" formControlName="full_name">
                                 </div>
 
+                                <!-- COUNTRY -->
                                 <div class="col-md-6 mb-3">
                                     <input class="form-control" placeholder="Country" formControlName="country">
                                 </div>
 
+                                <!-- GENDER -->
                                 <div class="col-md-6 mb-3">
                                     <select class="form-control" formControlName="gender">
                                         <option value="">Select Gender</option>
-                                        <option>Male</option>
-                                        <option>Female</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
                                     </select>
                                 </div>
 
+                                <!-- PHONE -->
                                 <div class="col-md-6 mb-3">
                                     <input class="form-control" placeholder="Phone" formControlName="phone">
                                 </div>
 
+                                <!-- ========================= -->
+                                <!-- ROLE DROPDOWN -->
+                                <!-- ========================= -->
+                                <div class="col-md-6 mb-3">
+                                    <!-- <label>Role</label> -->
+                                    <select class="form-control" formControlName="role">
+                                        <option value="">Select Role</option>
+
+                                        <option *ngFor="let r of roles" [value]="r.role_name">
+                                            {{ r.role_name }}
+                                        </option>
+
+                                    </select>
+                                </div>
+
+                                <!-- ========================= -->
+                                <!-- DOCTOR REG NO -->
+                                <!-- ========================= -->
+                                <div class="col-md-6 mb-3">
+                                    <input class="form-control" placeholder="Doctor Registration No"
+                                        formControlName="doctor_reg_no">
+                                </div>
+
                             </div>
 
-                            <button class="btn btn-primary">Save</button>
+                            <button class="btn btn-primary">
+                                Save Profile
+                            </button>
 
                         </form>
 
                     </div>
 
+                    <!-- ========================= -->
                     <!-- PASSWORD TAB -->
-                    <div *ngIf="activeTab==='password'">
+                    <!-- ========================= -->
+                    <div *ngIf="activeTab === 'password'">
 
                         <form [formGroup]="passwordForm" (ngSubmit)="changePassword()">
 
@@ -112,11 +178,18 @@
                                     formControlName="confirmPassword">
                             </div>
 
-                            <button class="btn btn-danger">Update Password</button>
+                            <button class="btn btn-danger">
+                                Update Password
+                            </button>
+
                         </form>
+
                     </div>
+
                 </div>
             </div>
+
         </div>
+
     </div>
 </div>

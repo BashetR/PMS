@@ -1,0 +1,151 @@
+<!-- <div class="card">
+    <div class="card-header">
+        <h1 class="card-title"><b>Roles</b></h1>
+    </div>
+
+    <div class="card-body">
+        <ul class="nav nav-tabs mb-3">
+            <li class="nav-item">
+                <a class="nav-link" [class.active]="activeTab === 'active'" (click)="activeTab = 'active'">
+                    Active Roles
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" [class.active]="activeTab === 'inactive'" (click)="activeTab = 'inactive'">
+                    Inactive Roles
+                </a>
+            </li>
+        </ul>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th style="width: 200px">Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr *ngIf="loading">
+                        <td colspan="5" class="text-center">Loading...</td>
+                    </tr>
+
+                    <tr *ngFor="let role of filteredRoles">
+                        <td>{{ role.name }}</td>
+                        <td>{{ role.description }}</td>
+                        <td>
+                            <span class="badge bg-success" *ngIf="role.is_active">Active</span>
+                            <span class="badge bg-danger" *ngIf="!role.is_active">Inactive</span>
+                        </td>
+                        <td>{{ role.created_at | date:'short' }}</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm me-1" (click)="openPermissions(role)">Permissions</button>
+                            <button class="btn btn-warning btn-sm me-1" icon="edit">Edit</button>
+                            <button class="btn btn-danger btn-sm" icon="trash" (click)="deleteRole(role.id)">Delete</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div> -->
+
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title"><b>Roles</b></h1>
+
+        <div class="card-tools">
+            <button class="btn btn-primary btn-sm" (click)="openCreateModal()">
+                <i class="fas fa-plus"></i> New
+            </button>
+        </div>
+    </div>
+
+    <div class="card-body">
+        <ul class="nav nav-tabs mb-3">
+            <li class="nav-item">
+                <a class="nav-link" [class.active]="activeTab === 'active'" (click)="changeTab('active')">Active</a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" [class.active]="activeTab === 'inactive'" (click)="changeTab('inactive')">Inactive</a>
+            </li>
+        </ul>
+
+        <table class="table table-bordered table-hover">
+            <thead>
+                <tr>
+                    <th>Role</th>
+                    <!-- <th>Slug</th> -->
+                    <th>Description</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <tr *ngFor="let role of filteredRoles">
+                    <td>{{ role.role_name }}</td>
+                    <!-- <td>{{ role.slug }}</td> -->
+                    <td>{{ role.description || '-' }}</td>
+                    <td>
+                        <span class="badge bg-success" *ngIf="role.status">Active</span>
+                        <span class="badge bg-danger" *ngIf="!role.status">Inactive</span>
+                    </td>
+                    <td>{{ role.created_at | date:'short' }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary me-1" (click)="openPermissions(role)">Permissions</button>
+                        <button class="btn btn-sm btn-warning me-1" icon="edit" (click)="openEdit(role)">Edit</button>
+                        <button class="btn btn-sm btn-danger" icon="trash" (click)="deleteRole(role.id)">Delete</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="roleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ isEditMode ? 'Edit Role' : 'Add Role' }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <form [formGroup]="form">
+                    <div class="mb-3">
+                        <label>Role Name</label>
+                        <input class="form-control" formControlName="role_name">
+                    </div>
+
+                    <!-- <div class="mb-3">
+                        <label>Slug</label>
+                        <input class="form-control" formControlName="slug">
+                    </div> -->
+
+                    <div class="mb-3">
+                        <label>Description</label>
+                        <textarea class="form-control" formControlName="description"></textarea>
+                    </div>
+
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" formControlName="status">
+                        <label class="form-check-label">Active</label>
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" (click)="save()">{{ isEditMode ? 'Update' : 'Save' }}</button>
+            </div>
+        </div>
+    </div>
+</div>

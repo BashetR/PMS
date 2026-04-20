@@ -1,0 +1,138 @@
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title"><b>Menus</b></h1>
+
+        <div class="card-tools">
+            <button class="btn btn-primary btn-sm" (click)="openCreateModal()">
+                <i class="fas fa-plus"></i> New
+            </button>
+        </div>
+    </div>
+
+    <div class="card-body">
+
+        <!-- Tabs -->
+        <ul class="nav nav-tabs mb-3">
+            <li class="nav-item">
+                <a class="nav-link" [class.active]="activeTab==='active'" (click)="activeTab='active'">
+                    Active
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" [class.active]="activeTab==='inactive'" (click)="activeTab='inactive'">
+                    Inactive
+                </a>
+            </li>
+        </ul>
+
+        <!-- Table -->
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover text-center">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Name</th>
+                        <th>Icon</th>
+                        <th>Route</th>
+                        <th>Parent</th>
+                        <th>Order</th>
+                        <th>Status</th>
+                        <th style="width:180px">Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    <tr *ngIf="loading">
+                        <td colspan="8">Loading...</td>
+                    </tr>
+
+                    <tr *ngFor="let m of paginatedMenus; let i = index">
+                        <td>{{ i + 1 }}</td>
+                        <td>{{ m.name }}</td>
+                        <td><i [class]="m.icon"></i></td>
+                        <td>{{ m.route }}</td>
+                        <td>{{ m.parent_id }}</td>
+                        <td>{{ m.display_order }}</td>
+
+                        <td>
+                            <span class="badge bg-success" *ngIf="m.is_active">Active</span>
+                            <span class="badge bg-danger" *ngIf="!m.is_active">Inactive</span>
+                        </td>
+
+                        <td>
+                            <button class="btn btn-info btn-sm me-1" (click)="openViewModal(m)">View</button>
+
+                            <button class="btn btn-warning btn-sm me-1" (click)="openEditModal(m)">Edit</button>
+
+                            <button class="btn btn-danger btn-sm" (click)="deleteMenu(m.id)">Delete</button>
+                        </td>
+                    </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="d-flex justify-content-end mt-3">
+            <button class="btn btn-secondary btn-sm me-2" (click)="prevPage()" [disabled]="page === 1">
+                Prev
+            </button>
+
+            <span>Page {{ page }}</span>
+
+            <button class="btn btn-secondary btn-sm ms-2" (click)="nextPage()"
+                [disabled]="page * pageSize >= filteredMenus.length">
+                Next
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal fade show d-block" *ngIf="showModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5>
+                    {{ isViewMode ? 'View' : isEditMode ? 'Edit' : 'Create' }} Menu
+                </h5>
+                <button class="btn-close" (click)="closeModal()"></button>
+            </div>
+
+            <div class="modal-body">
+                <form [formGroup]="form">
+
+                    <input class="form-control mb-2" placeholder="Name" formControlName="name" [readonly]="isViewMode">
+
+                    <input class="form-control mb-2" placeholder="Icon (fas fa-home)" formControlName="icon"
+                        [readonly]="isViewMode">
+
+                    <input class="form-control mb-2" placeholder="Route (/dashboard)" formControlName="route"
+                        [readonly]="isViewMode">
+
+                    <input type="number" class="form-control mb-2" placeholder="Order" formControlName="display_order"
+                        [readonly]="isViewMode">
+
+                    <div class="form-check">
+                        <input type="checkbox" formControlName="is_active" [disabled]="isViewMode">
+                        <label>Active</label>
+                    </div>
+
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-primary" *ngIf="!isViewMode" (click)="save()">Save</button>
+
+                <button class="btn btn-secondary" (click)="closeModal()">Close</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop fade show" *ngIf="showModal"></div>
