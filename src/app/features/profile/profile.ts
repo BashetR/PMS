@@ -42,6 +42,7 @@ export class Profile implements OnInit {
       gender: [''],
       phone: [''],
       role_id: [null, Validators.required],
+      role: ['user'],
       doctor_reg_no: ['']
     });
 
@@ -74,13 +75,15 @@ export class Profile implements OnInit {
       this.user = user;
       const profile = await this.cache.getProfile(user.id);
       if (!profile) {
+        const defaultRole = this.roles.find(r => r.role_name === 'user');
         const { error } = await this.supabase.client
           .from('profiles')
           .insert({
             id: user.id,
             email: user.email,
             is_active: true,
-            role_id: null
+            role_id: defaultRole?.id || null,
+            role: 'user'
           });
 
         if (error) throw error;
@@ -95,6 +98,7 @@ export class Profile implements OnInit {
         gender: profile.gender || '',
         phone: profile.phone || '',
         role_id: profile.role_id || null,
+        role: profile.role || 'user',
         doctor_reg_no: profile.doctor_reg_no || ''
       });
       this.previewUrl = profile.avatar_url || null;
@@ -103,6 +107,11 @@ export class Profile implements OnInit {
     } finally {
       this.loader.hide();
     }
+  }
+
+  getRoleName(roleId: number): string {
+    const role = this.roles.find(r => r.id === roleId);
+    return role?.role_name || 'user';
   }
 
   fileProgress(event: any): void {
@@ -122,6 +131,7 @@ export class Profile implements OnInit {
       const user = await this.auth.getUser();
       if (!user) return;
       const data = this.profileForm.getRawValue();
+      const roleName = this.getRoleName(data.role_id);
       const payload = {
         id: user.id,
         username: data.username,
@@ -131,6 +141,7 @@ export class Profile implements OnInit {
         phone: data.phone,
         email: user.email,
         role_id: data.role_id,
+        role: roleName,
         doctor_reg_no: data.doctor_reg_no || null,
         avatar_url: this.previewUrl,
         updated_at: new Date().toISOString()

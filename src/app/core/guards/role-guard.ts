@@ -19,7 +19,7 @@ export class RoleGuard implements CanActivate {
 
         const { data: profile } = await this.supabase.client
             .from('profiles')
-            .select('role_id')
+            .select('role')
             .eq('id', auth.user.id)
             .single();
 
@@ -28,7 +28,7 @@ export class RoleGuard implements CanActivate {
             return false;
         }
 
-        const isAdmin = profile.role_id === 2;
+        const isAdmin = profile.role === 'Admin';
 
         if (!isAdmin) {
             this.router.navigate(['/unauthorized']);
