@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth-guard';
+import { RoleGuard } from './core/guards/role-guard';
 
 export const routes: Routes = [
   // 🔓 Public Routes (Auth)
@@ -43,30 +44,31 @@ export const routes: Routes = [
         path: 'profile',
         loadComponent: () => import('./features/profile/profile').then(m => m.Profile),
       },
-      {
-        path: 'users',
-        loadComponent: () => import('./features/users/users').then(m => m.Users),
-      },
-      {
-        path: 'roles',
-        loadComponent: () => import('./features/roles/roles').then(m => m.Roles),
-      },
-      {
-        path: 'permissions',
-        loadComponent: () => import('./features/permissions/permissions').then(m => m.Permissions),
-      },
-      {
-        path: 'role-permissions',
-        loadComponent: () => import('./features/role-permissions/role-permissions').then(m => m.RolePermissions),
-      },
-      {
-        path: 'menus',
-        loadComponent: () => import('./features/menus/menus').then(m => m.Menus),
-      },
       // {
-      //   path: 'admin',
-      //   loadChildren: () => import('./features/admin/admin.routes').then(m => m.ADMIN_ROUTES),
-      // }
+      //   path: 'users',
+      //   loadComponent: () => import('./features/users/users').then(m => m.Users),
+      // },
+      // {
+      //   path: 'roles',
+      //   loadComponent: () => import('./features/roles/roles').then(m => m.Roles),
+      // },
+      // {
+      //   path: 'permissions',
+      //   loadComponent: () => import('./features/permissions/permissions').then(m => m.Permissions),
+      // },
+      // {
+      //   path: 'role-permissions',
+      //   loadComponent: () => import('./features/role-permissions/role-permissions').then(m => m.RolePermissions),
+      // },
+      // {
+      //   path: 'menus',
+      //   loadComponent: () => import('./features/menus/menus').then(m => m.Menus),
+      // },
+      {
+        path: 'admin',
+        canActivate: [RoleGuard],
+        loadChildren: () => import('./features/admin/admin.routes').then(m => m.ADMIN_ROUTES),
+      }
     ]
   },
 
