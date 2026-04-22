@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { SupabaseService } from '../../core/services/supabase.service';
+import { LoaderService } from '../../core/services/loader.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -10,67 +11,70 @@ import { SupabaseService } from '../../core/services/supabase.service';
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css'
 })
-export class Dashboard implements OnInit {
 
+export class Dashboard implements OnInit {
   totalUsers: number = 0;
   user: any = null;
   profile: any = null;
 
-  constructor(
-    private supabase: SupabaseService,
-    private router: Router
-  ) { }
+  constructor(private supabase: SupabaseService, private router: Router, private loader: LoaderService) { }
 
   async ngOnInit(): Promise<void> {
-    await this.loadUser();
-    await this.loadStats();
+    this.loader.show();
+    try {
+      await this.loadUser();
+      await this.loadStats();
+    } catch (err) {
+      console.error('DASHBOARD INIT ERROR:', err);
+    } finally {
+      this.loader.hide();
+    }
   }
 
-  // ✅ LOAD TOTAL USERS
   async loadStats(): Promise<void> {
-    const { data, error } = await this.supabase.client
-      .from('profiles')
-      .select('id');
+    try {
+      const { data, error } = await this.supabase.client
+        .from('profiles')
+        .select('id');
 
-    if (error) {
-      console.error('Stats error:', error);
-      return;
+      if (error) throw error;
+      this.totalUsers = data?.length ?? 0;
+    } catch (err) {
+      console.error('STATS ERROR:', err);
     }
-
-    this.totalUsers = data?.length ?? 0;
   }
 
-  // // ✅ LOAD AUTH USER + PROFILE
   async loadUser(): Promise<void> {
-    const { data, error } = await this.supabase.client.auth.getUser();
-    if (error || !data?.user) {
-      console.error('Auth error:', error);
-      this.router.navigate(['/login']);
-      return;
-    }
+    try {
+      const { data, error } = await this.supabase.client.auth.getUser();
 
-    this.user = data.user;
-    const { data: profile, error: profileError } = await this.supabase.client
-      .from('profiles')
-      .select('*')
-      .eq('id', this.user.id)
-      .maybeSingle();
-    if (profileError) {
-      console.error('Profile error:', profileError);
-      return;
-    }
+      if (error || !data?.user) {
+        console.error('AUTH ERROR:', error);
+        this.router.navigate(['/login']);
+        return;
+      }
+      this.user = data.user;
 
-    // if profile doesn't exist → create it once
-    if (!profile) {
-      await this.supabase.client
+      const { data: profile, error: profileError } = await this.supabase.client
         .from('profiles')
-        .upsert({
-          id: this.user.id,
-          email: this.user.email
-        }, { onConflict: 'id' });
+        .select('*')
+        .eq('id', this.user.id)
+        .maybeSingle();
 
-      return this.loadUser();
+      if (profileError) throw profileError;
+      if (!profile) {
+        const { error: insertError } = await this.supabase.client
+          .from('profiles')
+          .upsert({
+            id: this.user.id,
+            email: this.user.email
+          }, { onConflict: 'id' });
+        if (insertError) throw insertError;
+        return this.loadUser();
+      }
+      this.profile = profile;
+    } catch (err) {
+      console.error('LOAD USER ERROR:', err);
     }
-    this.profile = profile;
   }
 }

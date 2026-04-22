@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { FormsModule } from '@angular/forms';
+import { LoaderService } from '../../core/services/loader.service';
 
 @Component({
   selector: 'app-role-permissions',
@@ -13,79 +14,136 @@ import { FormsModule } from '@angular/forms';
 
 export class RolePermissions implements OnInit {
   roles: any[] = [];
+  menus: any[] = [];
   permissions: any[] = [];
-  selectedRole: string | null = null;
-  assignedPermissions: string[] = [];
+  filteredPermissions: any[] = [];
+  selectedRole: number | null = null;
+  selectedMenu: number | null = null;
+  assignedPermissions: Set<string> = new Set();
 
-  loading = false;
-
-  constructor(private supabase: SupabaseService) { }
+  constructor(private supabase: SupabaseService, private loader: LoaderService) { }
 
   async ngOnInit() {
-    await this.loadRoles();
-    await this.loadPermissions();
+    await this.loadInitialData();
   }
 
-  async loadRoles() {
-    const { data } = await this.supabase.client
-      .from('roles')
-      .select('*');
+  async loadInitialData() {
+    this.loader.show();
+    try {
+      const [rolesRes, menusRes, permRes] = await Promise.all([
+        this.supabase.client.from('role').select('*').order('role_name'),
+        this.supabase.client.from('menu').select('*').order('menu_name'),
+        this.supabase.client.from('permissions').select('*').order('name')
+      ]);
 
-    this.roles = data || [];
+      if (rolesRes.error) throw rolesRes.error;
+      if (menusRes.error) throw menusRes.error;
+      if (permRes.error) throw permRes.error;
+      this.roles = rolesRes.data || [];
+      this.menus = menusRes.data || [];
+      this.permissions = permRes.data || [];
+    } catch (err) {
+      console.error('LOAD INITIAL ERROR:', err);
+    } finally {
+      this.loader.hide();
+    }
   }
 
-  async loadPermissions() {
-    const { data } = await this.supabase.client
-      .from('permissions')
-      .select('*');
+  async onMenuChange() {
+    this.filteredPermissions = [];
+    this.assignedPermissions.clear();
+    if (!this.selectedMenu) return;
+    this.loader.show();
+    try {
+      const { data, error } = await this.supabase.client
+        .from('menu')
+        .select('permission_list')
+        .eq('id', this.selectedMenu)
+        .single();
 
-    this.permissions = data || [];
+      if (error) throw error;
+      const permissionIds: string[] = (data?.permission_list || [])
+        .filter((x: any) => x && x.permission_id)
+        .map((x: any) => x.permission_id);
+
+      if (!permissionIds.length) {
+        this.filteredPermissions = [];
+        return;
+      }
+
+      const { data: perms, error: permError } = await this.supabase.client
+        .from('permissions')
+        .select('*')
+        .in('id', permissionIds);
+
+      if (permError) throw permError;
+      this.filteredPermissions = perms || [];
+      await this.loadRoleMappings();
+    } catch (err) {
+      console.error('MENU CHANGE ERROR:', err);
+    } finally {
+      this.loader.hide();
+    }
   }
 
-  async onRoleChange() {
-    if (!this.selectedRole) return;
+  async loadRoleMappings() {
+    if (!this.selectedRole || !this.selectedMenu) return;
+    try {
+      const { data, error } = await this.supabase.client
+        .from('role_menu_permission_relationship_map')
+        .select('permission_id')
+        .eq('role_id', this.selectedRole)
+        .eq('menu_id', this.selectedMenu);
 
-    const { data } = await this.supabase.client
-      .from('role_permissions')
-      .select('permission_id')
-      .eq('role_id', this.selectedRole);
-
-    this.assignedPermissions = data?.map(x => x.permission_id) || [];
+      if (error) throw error;
+      const ids = (data || []).map(x => x.permission_id);
+      this.assignedPermissions = new Set(ids);
+    } catch (err) {
+      console.error('LOAD ROLE MAPPING ERROR:', err);
+    }
   }
 
-  togglePermission(id: string) {
-    if (this.assignedPermissions.includes(id)) {
-      this.assignedPermissions =
-        this.assignedPermissions.filter(p => p !== id);
+  togglePermission(permissionId: string, event: any) {
+    if (event.target.checked) {
+      this.assignedPermissions.add(permissionId);
     } else {
-      this.assignedPermissions.push(id);
+      this.assignedPermissions.delete(permissionId);
     }
   }
 
-  async save() {
-    if (!this.selectedRole) return;
+  isChecked(permissionId: string): boolean {
+    return this.assignedPermissions.has(permissionId);
+  }
 
-    this.loading = true;
+  async saveAll() {
+    if (!this.selectedRole || !this.selectedMenu) return;
+    this.loader.show();
+    try {
+      const { error: deleteError } = await this.supabase.client
+        .from('role_menu_permission_relationship_map')
+        .delete()
+        .eq('role_id', this.selectedRole)
+        .eq('menu_id', this.selectedMenu);
 
-    // delete old
-    await this.supabase.client
-      .from('role_permissions')
-      .delete()
-      .eq('role_id', this.selectedRole);
+      if (deleteError) throw deleteError;
+      const rows = Array.from(this.assignedPermissions).map(id => ({
+        role_id: this.selectedRole,
+        menu_id: this.selectedMenu,
+        permission_id: id
+      }));
 
-    // insert new
-    const payload = this.assignedPermissions.map(p => ({
-      role_id: this.selectedRole,
-      permission_id: p
-    }));
-
-    if (payload.length > 0) {
-      await this.supabase.client
-        .from('role_permissions')
-        .insert(payload);
+      if (rows.length) {
+        const { error: insertError } = await this.supabase.client
+          .from('role_menu_permission_relationship_map')
+          .insert(rows);
+        if (insertError) throw insertError;
+      }
+      alert('Permissions saved successfully');
+    } catch (err) {
+      console.error('SAVE ERROR:', err);
+      alert('Save failed');
+    } finally {
+      this.loader.hide();
     }
-
-    this.loading = false;
-    alert('Permissions assigned successfully');
   }
 }

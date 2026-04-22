@@ -1,9 +1,7 @@
 <div class="content-wrapper p-3">
     <div class="row">
 
-        <!-- ========================= -->
-        <!-- LEFT SIDE -->
-        <!-- ========================= -->
+        <!-- ================= LEFT SIDE ================= -->
         <div class="col-md-3">
 
             <div class="card text-center">
@@ -28,12 +26,15 @@
                             Phone: {{ profileForm.value.phone || '-' }}
                         </li>
 
-                        <!-- ✅ ROLE DISPLAY -->
+                        <!-- ✅ FIXED ROLE DISPLAY -->
                         <li class="list-group-item">
-                            Role: {{ profileForm.value.role || '-' }}
+                            Role:
+                            {{
+                            roles.find(r => r.id === profileForm.value.role_id)?.role_name
+                            || '-'
+                            }}
                         </li>
 
-                        <!-- ✅ DOCTOR REG NO DISPLAY -->
                         <li class="list-group-item">
                             Doctor Reg No: {{ profileForm.value.doctor_reg_no || '-' }}
                         </li>
@@ -45,16 +46,12 @@
 
         </div>
 
-        <!-- ========================= -->
-        <!-- RIGHT SIDE -->
-        <!-- ========================= -->
+        <!-- ================= RIGHT SIDE ================= -->
         <div class="col-md-9">
 
             <div class="card">
 
-                <!-- ========================= -->
-                <!-- TABS -->
-                <!-- ========================= -->
+                <!-- ================= TABS ================= -->
                 <div class="card-header">
                     <ul class="nav nav-pills">
 
@@ -75,46 +72,36 @@
                     </ul>
                 </div>
 
-                <!-- ========================= -->
-                <!-- BODY -->
-                <!-- ========================= -->
+                <!-- ================= BODY ================= -->
                 <div class="card-body">
 
-                    <!-- ========================= -->
-                    <!-- PROFILE TAB -->
-                    <!-- ========================= -->
+                    <!-- ================= PROFILE TAB ================= -->
                     <div *ngIf="activeTab === 'profile'">
 
                         <form [formGroup]="profileForm" (ngSubmit)="updateProfile()">
 
                             <div class="row">
 
-                                <!-- IMAGE -->
                                 <div class="col-12 mb-3">
                                     <input type="file" class="form-control" (change)="fileProgress($event)">
                                 </div>
 
-                                <!-- USERNAME -->
                                 <div class="col-md-6 mb-3">
                                     <input class="form-control" placeholder="Username" formControlName="username">
                                 </div>
 
-                                <!-- EMAIL -->
                                 <div class="col-md-6 mb-3">
                                     <input class="form-control" placeholder="Email" formControlName="email" readonly>
                                 </div>
 
-                                <!-- FULL NAME -->
                                 <div class="col-md-6 mb-3">
                                     <input class="form-control" placeholder="Full Name" formControlName="full_name">
                                 </div>
 
-                                <!-- COUNTRY -->
                                 <div class="col-md-6 mb-3">
                                     <input class="form-control" placeholder="Country" formControlName="country">
                                 </div>
 
-                                <!-- GENDER -->
                                 <div class="col-md-6 mb-3">
                                     <select class="form-control" formControlName="gender">
                                         <option value="">Select Gender</option>
@@ -123,29 +110,23 @@
                                     </select>
                                 </div>
 
-                                <!-- PHONE -->
                                 <div class="col-md-6 mb-3">
                                     <input class="form-control" placeholder="Phone" formControlName="phone">
                                 </div>
 
-                                <!-- ========================= -->
-                                <!-- ROLE DROPDOWN -->
-                                <!-- ========================= -->
+                                <!-- ================= ROLE DROPDOWN (FIXED) ================= -->
                                 <div class="col-md-6 mb-3">
-                                    <!-- <label>Role</label> -->
-                                    <select class="form-control" formControlName="role">
+                                    <select class="form-control" formControlName="role_id">
+
                                         <option value="">Select Role</option>
 
-                                        <option *ngFor="let r of roles" [value]="r.role_name">
+                                        <option *ngFor="let r of roles" [value]="r.id">
                                             {{ r.role_name }}
                                         </option>
 
                                     </select>
                                 </div>
 
-                                <!-- ========================= -->
-                                <!-- DOCTOR REG NO -->
-                                <!-- ========================= -->
                                 <div class="col-md-6 mb-3">
                                     <input class="form-control" placeholder="Doctor Registration No"
                                         formControlName="doctor_reg_no">
@@ -161,9 +142,7 @@
 
                     </div>
 
-                    <!-- ========================= -->
-                    <!-- PASSWORD TAB -->
-                    <!-- ========================= -->
+                    <!-- ================= PASSWORD TAB ================= -->
                     <div *ngIf="activeTab === 'password'">
 
                         <form [formGroup]="passwordForm" (ngSubmit)="changePassword()">
@@ -187,6 +166,7 @@
                     </div>
 
                 </div>
+
             </div>
 
         </div>

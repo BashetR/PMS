@@ -1,39 +1,170 @@
-<div class="card">
-    <div class="card-header">
-        <h1 class="card-title"><b>Assign Permissions to Role</b></h1>
-    </div>
+<div class="content-wrapper">
 
-    <div class="card-body">
+    <!-- ================= HEADER ================= -->
+    <section class="content-header">
+        <div class="container-fluid">
 
-        <!-- Role Dropdown -->
-        <div class="form-group mb-3">
-            <label>Select Role</label>
-            <select class="form-control" [(ngModel)]="selectedRole" (change)="onRoleChange()">
-                <option value="">-- Select Role --</option>
-                <option *ngFor="let r of roles" [value]="r.id">
-                    {{ r.name }}
-                </option>
-            </select>
-        </div>
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h4 class="mb-0">Role Permission Management</h4>
+                </div>
 
-        <!-- Permissions List -->
-        <div class="row">
-            <div class="col-md-4" *ngFor="let p of permissions">
-                <div class="form-check">
-                    <input type="checkbox" class="form-check-input" [checked]="assignedPermissions.includes(p.id)"
-                        (change)="togglePermission(p.id)">
-                    <label class="form-check-label">
-                        {{ p.name }}
-                    </label>
+                <div class="col-sm-6 text-right">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item">
+                            <a routerLink="/dashboard">Dashboard</a>
+                        </li>
+                        <li class="breadcrumb-item active">
+                            Role Permission
+                        </li>
+                    </ol>
                 </div>
             </div>
+
         </div>
+    </section>
 
-    </div>
+    <!-- ================= MAIN ================= -->
+    <section class="content">
+        <div class="container-fluid">
 
-    <div class="card-footer text-end">
-        <button class="btn btn-primary" (click)="save()" [disabled]="loading">
-            Save
-        </button>
-    </div>
+            <div class="row">
+
+                <!-- ================= LEFT PANEL ================= -->
+                <div class="col-lg-4 col-md-5 col-12">
+
+                    <div class="card card-primary card-outline">
+
+                        <div class="card-header">
+                            <h5 class="card-title">
+                                <i class="fas fa-cogs me-1"></i>
+                                Configuration
+                            </h5>
+                        </div>
+
+                        <div class="card-body">
+
+                            <!-- ROLE -->
+                            <div class="form-group mb-3">
+                                <label>Role</label>
+
+                                <select class="form-control" [(ngModel)]="selectedRole">
+                                    <option [ngValue]="null">Select Role</option>
+
+                                    <option *ngFor="let r of roles" [ngValue]="r.id">
+                                        {{ r.role_name }}
+                                    </option>
+                                </select>
+                            </div>
+
+                            <!-- MENU -->
+                            <div class="form-group mb-3">
+                                <label>Menu</label>
+
+                                <select class="form-control" [(ngModel)]="selectedMenu" (change)="onMenuChange()">
+
+                                    <option [ngValue]="null">Select Menu</option>
+
+                                    <option *ngFor="let m of menus" [ngValue]="m.id">
+                                        {{ m.menu_name }}
+                                    </option>
+
+                                </select>
+                            </div>
+
+                            <!-- <button class="btn btn-primary w-100" (click)="onMenuChange()" [disabled]="!selectedMenu">
+                                Load Permissions
+                            </button> -->
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- ================= RIGHT PANEL ================= -->
+                <div class="col-lg-8 col-md-7 col-12">
+
+                    <div class="card card-success card-outline">
+
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-shield-alt me-1"></i>
+                                Permissions
+                            </h5>
+                        </div>
+
+                        <div class="card-body">
+
+                            <!-- EMPTY STATE -->
+                            <div *ngIf="filteredPermissions.length === 0" class="text-center text-muted py-5">
+
+                                <i class="fas fa-lock fa-2x mb-3"></i>
+
+                                <p class="mb-0">
+                                    Select role and menu to view permissions
+                                </p>
+
+                            </div>
+
+                            <!-- PERMISSIONS GRID -->
+                            <div class="row" *ngIf="filteredPermissions.length > 0">
+
+                                <div class="col-xl-4 col-lg-6 col-md-6 col-12" *ngFor="let p of filteredPermissions">
+
+                                    <div class="card border mb-3 shadow-sm">
+
+                                        <div class="card-body">
+
+                                            <!-- CHECKBOX -->
+                                            <div class="form-check">
+
+                                                <input type="checkbox" class="form-check-input" [id]="'perm-' + p.id"
+                                                    [checked]="isChecked(p.id)"
+                                                    (change)="togglePermission(p.id, $event)">
+
+                                                <label class="form-check-label fw-bold" [for]="'perm-' + p.id">
+
+                                                    {{ p.name }}
+
+                                                </label>
+
+                                            </div>
+
+                                            <!-- DESCRIPTION -->
+                                            <small class="text-muted d-block mt-1">
+                                                {{ p.description }}
+                                            </small>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <!-- SAVE BUTTON -->
+                        <div class="card-footer text-right">
+
+                            <button class="btn btn-success btn-sm" (click)="saveAll()"
+                                [disabled]="!selectedRole || !selectedMenu">
+
+                                Save Changes
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+    </section>
+
 </div>

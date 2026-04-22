@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
-import { Router, RouterLink, RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { CommonModule } from '@angular/common';
+import { LoaderService } from '../../core/services/loader.service';
 
 @Component({
   selector: 'app-topbar',
@@ -15,110 +16,123 @@ export class Topbar implements OnInit {
   userName: string = 'User';
   userEmail: string = '';
   avatar: string = 'assets/images/profile_Image/avt.png';
-  private userId: string | null = null;
+  userId: string | null = null;
+  user: any;
   menus: any[] = [];
   treeMenus: any[] = [];
-  user: any;
-  userPermissions: string[] = [];
+  openMenuId: number | null = null;
+  userDropdownOpen = false;
 
-  constructor(
-    private supabase: SupabaseService,
-    private router: Router
-  ) { }
+  constructor(private supabase: SupabaseService, private router: Router, private loader: LoaderService) { }
 
   async ngOnInit() {
-    await this.loadUser();
-    await this.loadMenus();
+    this.loader.show();
+    try {
+      await this.loadUser();
+      await this.loadMenus();
+    } catch (err) {
+      console.error('TOPBAR INIT ERROR:', err);
+    } finally {
+      this.loader.hide();
+    }
   }
 
   async loadUser(): Promise<void> {
-    const { data: auth } = await this.supabase.client.auth.getUser();
-    if (!auth.user) return;
-    this.user = auth.user;
+    try {
+      const { data: auth, error } = await this.supabase.client.auth.getUser();
+      if (error || !auth?.user) return;
+      this.user = auth.user;
+      this.userId = this.user.id;
+      this.userEmail = this.user.email || '';
 
-    this.userId = this.user.id;
-    this.userEmail = this.user.email || '';
+      const { data: profile, error: profileError } = await this.supabase.client
+        .from('profiles')
+        .select('*')
+        .eq('id', this.user.id)
+        .maybeSingle();
 
-    const { data: profile } = await this.supabase.client
-      .from('profiles')
-      .select('*')
-      .eq('id', this.user.id)
-      .maybeSingle();
-
-    if (profile) {
-      this.userName = profile.username || profile.full_name || 'User';
-      this.avatar = profile.avatar_url || this.avatar;
+      if (profileError) throw profileError;
+      if (profile) {
+        this.userName = profile.username || profile.full_name || 'User';
+        this.avatar = profile.avatar_url || this.avatar;
+      }
+    } catch (err) {
+      console.error('LOAD USER ERROR:', err);
     }
-
-    if (!profile?.role_id) return;
-    const { data: rolePerms } = await this.supabase.client
-      .from('role_permissions')
-      .select('permission_id')
-      .eq('role_id', profile.role_id);
-
-    this.userPermissions = rolePerms?.map(x => x.permission_id) || [];
   }
 
   async loadMenus() {
-    const { data } = await this.supabase.client
-      .from('menu_permissions')
-      .select(`
-      menu_id,
-      permission_id,
-      menus(*)
-    `);
+    try {
+      const { data, error } = await this.supabase.client
+        .from('menu')
+        .select('*')
+        .eq('status', true)
+        .order('order_no', { ascending: true });
 
-    const allowedMenus = data
-      ?.filter(mp => this.userPermissions.includes(mp.permission_id))
-      .map(mp => mp.menus)
-      .flat() || [];
-
-    this.menus = this.removeDuplicates(allowedMenus);
-
-    this.buildTree();
-  }
-
-  removeDuplicates(arr: any[]) {
-    const map = new Map();
-    arr.forEach(m => map.set(m.id, m));
-    return Array.from(map.values());
+      if (error) throw error;
+      this.menus = data || [];
+      this.buildTree();
+    } catch (err) {
+      console.error('MENU LOAD ERROR:', err);
+    }
   }
 
   buildTree() {
-    const map = new Map();
-    this.menus.forEach(m => map.set(m.id, { ...m, children: [] }));
+    const map = new Map<number, any>();
     this.treeMenus = [];
+    this.menus.forEach(menu => {
+      map.set(Number(menu.id), { ...menu, children: [] });
+    });
     map.forEach(menu => {
-      if (menu.parent_id) {
-        const parent = map.get(menu.parent_id);
-        parent?.children.push(menu);
+      const parentId =
+        menu.parent_id !== null && menu.parent_id !== undefined
+          ? Number(menu.parent_id)
+          : null;
+
+      if (parentId && map.has(parentId)) {
+        map.get(parentId).children.push(menu);
       } else {
         this.treeMenus.push(menu);
       }
     });
   }
 
-  isActive(route: string) {
+  toggleMenu(id: number) {
+    this.openMenuId = this.openMenuId === id ? null : id;
+  }
+
+  closeMenus() {
+    this.openMenuId = null;
+  }
+
+  isActive(route: string): boolean {
     return this.router.url === route;
   }
 
   goProfile(): void {
-    this.closeDropdown();
-
-    // navigate safely
+    this.closeMenus();
     this.router.navigateByUrl('/profile');
   }
 
   async logout(): Promise<void> {
-
-    this.closeDropdown();
-
-    await this.supabase.client.auth.signOut();
-    this.router.navigateByUrl('/login');
+    this.loader.show();
+    try {
+      this.closeMenus();
+      await this.supabase.client.auth.signOut();
+      this.router.navigateByUrl('/login');
+    } catch (err) {
+      console.error('LOGOUT ERROR:', err);
+    } finally {
+      this.loader.hide();
+    }
   }
 
-  closeDropdown(): void {
-    document.querySelectorAll('.dropdown-menu.show')
-      .forEach(el => el.classList.remove('show'));
+  toggleUserDropdown() {
+    this.userDropdownOpen = !this.userDropdownOpen;
+  }
+
+  closeAll() {
+    this.userDropdownOpen = false;
+    this.openMenuId = null;
   }
 }
