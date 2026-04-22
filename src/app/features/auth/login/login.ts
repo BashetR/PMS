@@ -4,11 +4,10 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { environment } from '../../../../environments/environment';
 import { Auth } from '../../../core/services/auth.service';
-import { App } from '../../../app';
 import Swal from 'sweetalert2';
 import { FormValidationService } from '../../../core/services/form-validation.service';
 import { TitleService } from '../../../core/services/title.service';
-declare var localStorage: any;
+import { LoaderService } from '../../../core/services/loader.service';
 
 @Component({
   selector: 'app-login',
@@ -22,9 +21,8 @@ export class Login implements OnInit, OnDestroy {
   loginForm!: FormGroup;
   appLogo: any;
   copyright: any;
-  isLoading = false;
 
-  constructor(private authService: Auth, private fb: FormBuilder, private titleService: TitleService, private formValidator: FormValidationService, private route: ActivatedRoute, private router: Router) { }
+  constructor(private authService: Auth, private fb: FormBuilder, private titleService: TitleService, private formValidator: FormValidationService, private route: ActivatedRoute, private router: Router, private loader: LoaderService) { }
 
   ngOnInit() {
     this.CreateLoginForm();
@@ -48,34 +46,31 @@ export class Login implements OnInit, OnDestroy {
   }
 
   async login() {
-    if (this.loginForm.valid) {
-      this.isLoading = true;
-      try {
-        const res = await this.authService.login(this.loginForm.value);
-
-        // ⚠️ Email not verified case (Supabase)
-        if (!res.session) {
-          Swal.fire({
-            title: 'Email not verified',
-            text: 'Please verify your email before logging in.',
-            icon: 'warning'
-          });
-          return;
-        }
-
-        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/dashboard';
-        this.router.navigateByUrl(returnUrl);
-      } catch (error: any) {
-        Swal.fire({
-          title: 'Login Failed',
-          text: error.message || 'Invalid email or password',
-          icon: 'error'
-        });
-      } finally {
-        this.isLoading = false;
-      }
-    } else {
+    if (this.loginForm.invalid) {
       this.formValidator.validateAllFormFields(this.loginForm);
+      return;
+    }
+    this.loader.show();
+    try {
+      const res = await this.authService.login(this.loginForm.value);
+      if (!res.session) {
+        Swal.fire({
+          title: 'Email not verified',
+          text: 'Please verify your email before logging in.',
+          icon: 'warning'
+        });
+        return;
+      }
+      const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/dashboard';
+      this.router.navigateByUrl(returnUrl);
+    } catch (error: any) {
+      Swal.fire({
+        title: 'Login Failed',
+        text: error.message || 'Invalid email or password',
+        icon: 'error'
+      });
+    } finally {
+      this.loader.hide();
     }
   }
 }

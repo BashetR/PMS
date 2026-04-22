@@ -1,9 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, OnInit, AfterViewInit } from '@angular/core';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { Validators, FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
+import { LoaderService } from '../../core/services/loader.service';
 declare var bootstrap: any;
 
 @Component({
@@ -14,30 +14,18 @@ declare var bootstrap: any;
   styleUrl: './permissions.css',
 })
 
-export class Permissions implements OnInit {
+export class Permissions implements OnInit, AfterViewInit {
   permissions: any[] = [];
   activeTab = 'active';
-
-  loading = false; // your custom loader flag
-
   form!: FormGroup;
-
-  showModal = false;
   isEditMode = false;
   isViewMode = false;
   selectedPermissionId: string | null = null;
-
-  // ✅ Pagination
   page = 1;
   pageSize = 5;
-
   private modalInstance: any;
 
-  constructor(
-    private supabase: SupabaseService,
-    private router: Router,
-    private fb: FormBuilder
-  ) {
+  constructor(private supabase: SupabaseService, private fb: FormBuilder, private loader: LoaderService) {
     this.initForm();
   }
 
@@ -55,7 +43,6 @@ export class Permissions implements OnInit {
     }
   }
 
-  // ✅ FORM INIT
   initForm() {
     this.form = this.fb.group({
       name: ['', Validators.required],
@@ -64,36 +51,30 @@ export class Permissions implements OnInit {
     });
   }
 
-  // ✅ LOAD DATA
   async loadPermissions() {
+    this.loader.show();
     try {
-      this.loading = true;
-
       const { data, error } = await this.supabase.client
         .from('permissions')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-
       this.permissions = data || [];
-      this.page = 1; // reset page
-
+      this.page = 1;
     } catch (err: any) {
       Swal.fire('Error', err.message, 'error');
     } finally {
-      this.loading = false;
+      this.loader.hide();
     }
   }
 
-  // ✅ FILTER
   get filteredPermissions() {
     return this.permissions.filter(p =>
       this.activeTab === 'active' ? p.is_active : !p.is_active
     );
   }
 
-  // ✅ PAGINATION
   get totalPages() {
     return Math.ceil(this.filteredPermissions.length / this.pageSize);
   }
@@ -124,17 +105,14 @@ export class Permissions implements OnInit {
     this.page = 1;
   }
 
-  // ✅ MODAL
   openCreateModal() {
     this.isEditMode = false;
     this.selectedPermissionId = null;
-
     this.form.reset({
       name: '',
       description: '',
       is_active: true
     });
-
     this.form.enable();
     this.modalInstance.show();
   }
@@ -142,7 +120,6 @@ export class Permissions implements OnInit {
   openEditModal(p: any) {
     this.isEditMode = true;
     this.selectedPermissionId = p.id;
-
     this.form.patchValue(p);
     this.modalInstance.show();
   }
@@ -153,13 +130,11 @@ export class Permissions implements OnInit {
     }
   }
 
-  // ✅ SAVE
   async save() {
     if (this.form.invalid) return;
+    this.loader.show();
     try {
-      this.loading = true;
       const value = this.form.getRawValue();
-
       if (this.isEditMode && this.selectedPermissionId) {
         const { error } = await this.supabase.client
           .from('permissions')
@@ -167,7 +142,6 @@ export class Permissions implements OnInit {
           .eq('id', this.selectedPermissionId);
 
         if (error) throw error;
-
         Swal.fire('Updated!', 'Permission updated', 'success');
       } else {
         const { error } = await this.supabase.client
@@ -175,21 +149,17 @@ export class Permissions implements OnInit {
           .insert([value]);
 
         if (error) throw error;
-
         Swal.fire('Created!', 'Permission created', 'success');
       }
-
-      this.closeModal();        // 🔥 CLOSE MODAL
-      await this.loadPermissions(); // 🔥 REFRESH DATA
-
+      await this.loadPermissions();
+      this.closeModal();
     } catch (err: any) {
       Swal.fire('Error', err.message, 'error');
     } finally {
-      this.loading = false;
+      this.loader.hide();
     }
   }
 
-  // ✅ DELETE WITH SWEETALERT
   confirmDelete(permission: any) {
     Swal.fire({
       title: 'Are you sure?',
@@ -206,24 +176,20 @@ export class Permissions implements OnInit {
   }
 
   async deletePermission(id: string) {
+    this.loader.show();
     try {
-      this.loading = true;
-
       const { error } = await this.supabase.client
         .from('permissions')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
-
       Swal.fire('Deleted!', 'Permission deleted successfully', 'success');
-
       await this.loadPermissions();
-
     } catch (err: any) {
       Swal.fire('Error', err.message, 'error');
     } finally {
-      this.loading = false;
+      this.loader.hide();
     }
   }
 }

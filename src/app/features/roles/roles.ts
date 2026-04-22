@@ -3,6 +3,8 @@ import { SupabaseService } from '../../core/services/supabase.service';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import Swal from 'sweetalert2';
+import { AppCacheService } from '../../core/services/app-cache.service';
+import { LoaderService } from '../../core/services/loader.service';
 declare var bootstrap: any;
 
 @Component({
@@ -16,13 +18,12 @@ declare var bootstrap: any;
 export class Roles implements OnInit, AfterViewInit {
   roles: any[] = [];
   activeTab: 'active' | 'inactive' = 'active';
-  loading = false;
   form!: FormGroup;
   isEditMode = false;
   selectedRoleId: string | null = null;
   private modalInstance: any;
 
-  constructor(private supabase: SupabaseService, private fb: FormBuilder) {
+  constructor(private supabase: SupabaseService, private fb: FormBuilder, private cache: AppCacheService, private loader: LoaderService) {
     this.initForm();
   }
 
@@ -40,25 +41,26 @@ export class Roles implements OnInit, AfterViewInit {
   initForm() {
     this.form = this.fb.group({
       role_name: ['', Validators.required],
-      // slug: [''],
       description: [''],
       status: [true]
     });
   }
 
   async loadRoles() {
-    this.loading = true;
-    const { data, error } = await this.supabase.client
-      .from('role')
-      .select('*')
-      .order('created_at', { ascending: false });
+    this.loader.show();
+    try {
+      const { data, error } = await this.supabase.client
+        .from('role')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (!error) {
+      if (error) throw error;
       this.roles = data || [];
-    } else {
-      Swal.fire('Error', error.message, 'error');
+    } catch (err: any) {
+      Swal.fire('Error', err.message || 'Failed to load roles', 'error');
+    } finally {
+      this.loader.hide();
     }
-    this.loading = false;
   }
 
   get filteredRoles() {
@@ -76,7 +78,6 @@ export class Roles implements OnInit, AfterViewInit {
     this.selectedRoleId = null;
     this.form.reset({
       role_name: '',
-      // slug: '',
       description: '',
       status: true
     });
@@ -88,7 +89,6 @@ export class Roles implements OnInit, AfterViewInit {
     this.selectedRoleId = role.id;
     this.form.patchValue({
       role_name: role.role_name,
-      // slug: role.slug,
       description: role.description,
       status: role.status
     });
@@ -97,38 +97,39 @@ export class Roles implements OnInit, AfterViewInit {
 
   async save() {
     if (this.form.invalid) return;
-    this.loading = true;
-    const value = this.form.value;
-    const now = new Date().toISOString();
-    if (this.isEditMode && this.selectedRoleId) {
-      const { error } = await this.supabase.client
-        .from('role')
-        .update({
-          ...value,
-          updated_at: now
-        })
-        .eq('id', this.selectedRoleId);
-      if (error) {
-        Swal.fire('Error', error.message, 'error');
-      } else {
+    this.loader.show();
+    try {
+      const value = this.form.value;
+      const now = new Date().toISOString();
+      if (this.isEditMode && this.selectedRoleId) {
+        const { error } = await this.supabase.client
+          .from('role')
+          .update({
+            ...value,
+            updated_at: now
+          })
+          .eq('id', this.selectedRoleId);
+
+        if (error) throw error;
         Swal.fire('Success', 'Role updated', 'success');
-      }
-    } else {
-      const { error } = await this.supabase.client
-        .from('role')
-        .insert([{
-          ...value,
-          created_at: now
-        }]);
-      if (error) {
-        Swal.fire('Error', error.message, 'error');
       } else {
+        const { error } = await this.supabase.client
+          .from('role')
+          .insert([{
+            ...value,
+            created_at: now
+          }]);
+
+        if (error) throw error;
         Swal.fire('Success', 'Role created', 'success');
       }
+      await this.loadRoles();
+      this.modalInstance.hide();
+    } catch (err: any) {
+      Swal.fire('Error', err.message || 'Save failed', 'error');
+    } finally {
+      this.loader.hide();
     }
-    this.modalInstance.hide();
-    await this.loadRoles();
-    this.loading = false;
   }
 
   async deleteRole(id: string) {
@@ -140,11 +141,21 @@ export class Roles implements OnInit, AfterViewInit {
       confirmButtonText: 'Yes delete'
     });
     if (!confirm.isConfirmed) return;
-    await this.supabase.client
-      .from('role')
-      .delete()
-      .eq('id', id);
-    this.loadRoles();
+    this.loader.show();
+    try {
+      const { error } = await this.supabase.client
+        .from('role')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      await this.loadRoles();
+      Swal.fire('Deleted', 'Role removed', 'success');
+    } catch (err: any) {
+      Swal.fire('Error', err.message || 'Delete failed', 'error');
+    } finally {
+      this.loader.hide();
+    }
   }
 
   openPermissions(role: any) {

@@ -101,8 +101,8 @@
                     <td>{{ role.created_at | date:'short' }}</td>
                     <td>
                         <button class="btn btn-sm btn-primary me-1" (click)="openPermissions(role)">Permissions</button>
-                        <button class="btn btn-sm btn-warning me-1" icon="edit" (click)="openEdit(role)">Edit</button>
-                        <button class="btn btn-sm btn-danger" icon="trash" (click)="deleteRole(role.id)">Delete</button>
+                        <button class="btn btn-sm btn-warning me-1" icon="edit" (click)="openEdit(role)"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-sm btn-danger" icon="trash" (click)="deleteRole(role.id)"><i class="fas fa-trash"></i></button>
                     </td>
                 </tr>
             </tbody>
