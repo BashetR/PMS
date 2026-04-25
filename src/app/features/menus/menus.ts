@@ -3,10 +3,10 @@ import { BaseCrudComponent } from '../../shared/base/base-crud.component';
 import { FormBuilder } from '@angular/forms';
 import { MenuService } from '../../core/services/menu.service';
 import { PermissionService } from '../../core/services/permission.service';
+import { LoaderService } from '../../core/services/loader.service';
+import { CommonModule } from '@angular/common';
 import { CrudTable } from '../../shared/components/crud-table/crud-table';
 import { CrudModal } from '../../shared/components/crud-modal/crud-modal';
-import { CommonModule } from '@angular/common';
-import { LoaderService } from '../../core/services/loader.service';
 
 @Component({
   selector: 'app-menus',
@@ -14,14 +14,15 @@ import { LoaderService } from '../../core/services/loader.service';
   imports: [CommonModule, CrudTable, CrudModal],
   templateUrl: './menus.html'
 })
+
 export class Menus extends BaseCrudComponent implements OnInit {
+  menus: any[] = [];
+  mainMenus: any[] = [];
 
   permissionList: any[] = [];
-  mainMenus: any[] = [];
-  menus: any[] = [];
+  filteredPermissionList: any[] = [];
 
   permissionDropdownOpen = false;
-  filteredPermissionList: any[] = [];
 
   constructor(
     fb: FormBuilder,
@@ -45,7 +46,7 @@ export class Menus extends BaseCrudComponent implements OnInit {
     });
   }
 
-  // ================= CONFIG (REUSABLE) =================
+  // ================= CONFIG =================
   config = {
     title: 'Menus',
 
@@ -91,18 +92,16 @@ export class Menus extends BaseCrudComponent implements OnInit {
     await this.loadPermissions();
   }
 
-  // ================= LOAD PERMISSIONS =================
-  async loadPermissions() {
-    this.permissionList = await this.permissionService.getPermissions();
-    this.filteredPermissionList = [...this.permissionList];
-  }
-
+  // ================= LOAD MENUS =================
   async loadMenus() {
-    const data = await this.menuService.getAll();
+    this.menus = await this.menuService.getAll();
 
-    this.menus = data;
-    this.mainMenus = this.menus.filter(m => m.menu_type === 'menu');
+    // ✅ ONLY MAIN MENUS
+    this.mainMenus = this.menus.filter(m =>
+      m.menu_type === 'menu' && m.status === true
+    );
 
+    // inject into dropdown config
     const parentField = this.config.formFields.find(f => f.name === 'parent_id');
 
     if (parentField) {
@@ -113,7 +112,13 @@ export class Menus extends BaseCrudComponent implements OnInit {
     }
   }
 
-  // ================= OPEN MODAL =================
+  // ================= LOAD PERMISSIONS =================
+  async loadPermissions() {
+    this.permissionList = await this.permissionService.getPermissions();
+    this.filteredPermissionList = [...this.permissionList];
+  }
+
+  // ================= MODAL =================
   override openCreate() {
     super.openCreate();
     this.form.patchValue({ permission_list: [] });
@@ -121,12 +126,20 @@ export class Menus extends BaseCrudComponent implements OnInit {
 
   override openEdit(row: any) {
     super.openEdit(row);
+
     this.form.patchValue({
       permission_list: row.permission_list || []
     });
   }
 
-  // ================= PERMISSION LOGIC =================
+  // ================= MENU TYPE CHANGE =================
+  onMenuTypeChange() {
+    if (this.form.value.menu_type === 'menu') {
+      this.form.patchValue({ parent_id: null });
+    }
+  }
+
+  // ================= PERMISSIONS =================
   togglePermission(id: string, event: any) {
     let list = this.form.value.permission_list || [];
 
@@ -148,13 +161,13 @@ export class Menus extends BaseCrudComponent implements OnInit {
     this.permissionDropdownOpen = !this.permissionDropdownOpen;
   }
 
-  isAllSelected(): boolean {
-    const list = this.form.value.permission_list || [];
-    return list.length === this.permissionList.length;
+  isAllSelected() {
+    return (this.form.value.permission_list || []).length === this.permissionList.length;
   }
 
   toggleSelectAll(event: any) {
     const checked = event.target.checked;
+
     this.form.patchValue({
       permission_list: checked ? this.permissionList.map(p => p.id) : []
     });
