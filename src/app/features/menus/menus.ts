@@ -1,284 +1,162 @@
-import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
-import { SupabaseService } from '../../core/services/supabase.service';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, FormControl } from '@angular/forms';
-import Swal from 'sweetalert2';
+import { BaseCrudComponent } from '../../shared/base/base-crud.component';
+import { FormBuilder } from '@angular/forms';
+import { MenuService } from '../../core/services/menu.service';
+import { PermissionService } from '../../core/services/permission.service';
+import { CrudTable } from '../../shared/components/crud-table/crud-table';
+import { CrudModal } from '../../shared/components/crud-modal/crud-modal';
+import { CommonModule } from '@angular/common';
 import { LoaderService } from '../../core/services/loader.service';
 
 @Component({
   selector: 'app-menus',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
-  templateUrl: './menus.html',
-  styleUrl: './menus.css'
+  imports: [CommonModule, CrudTable, CrudModal],
+  templateUrl: './menus.html'
 })
+export class Menus extends BaseCrudComponent implements OnInit {
 
-export class Menus implements OnInit {
-  menus: any[] = [];
   permissionList: any[] = [];
-  filteredPermissionList: any[] = [];
-  activeTab = 'active';
-  page = 1;
-  pageSize = 5;
-  showModal = false;
-  isEditMode = false;
-  isViewMode = false;
-  selectedId: number | null = null;
+  mainMenus: any[] = [];
+  menus: any[] = [];
+
   permissionDropdownOpen = false;
-  permissionSearchControl = new FormControl('');
-  form!: FormGroup;
+  filteredPermissionList: any[] = [];
 
-  constructor(private supabase: SupabaseService, private fb: FormBuilder, private loader: LoaderService) {
-    this.initForm();
-  }
+  constructor(
+    fb: FormBuilder,
+    loader: LoaderService,
+    private menuService: MenuService,
+    private permissionService: PermissionService
+  ) {
+    super(fb, loader);
 
-  async ngOnInit() {
-    await this.loadMenus();
-    await this.loadPermissions();
-    this.permissionSearchControl.valueChanges.subscribe(value => {
-      this.filterPermissions(value || '');
-    });
-  }
-
-  initForm() {
     this.form = this.fb.group({
-      menu_name: ['', Validators.required],
-      slug: ['', Validators.required],
+      id: [null],
+      menu_name: [''],
+      slug: [''],
       icon: [''],
       route: [''],
+      menu_type: ['menu'],
       parent_id: [null],
       order_no: [0],
-      menu_type: ['menu', Validators.required],
       status: [true],
       permission_list: [[]]
     });
   }
 
-  async loadMenus() {
-    this.loader.show();
-    try {
-      const { data, error } = await this.supabase.client
-        .from('menu')
-        .select('*')
-        .order('order_no', { ascending: true });
+  // ================= CONFIG (REUSABLE) =================
+  config = {
+    title: 'Menus',
 
-      if (error) throw error;
-      this.menus = data || [];
-    } catch (err) {
-      console.error('LOAD MENUS ERROR:', err);
-    } finally {
-      this.loader.hide();
-    }
+    api: {
+      getAll: () => this.menuService.getAll(),
+      create: (data: any) => this.menuService.create(data),
+      update: (id: any, data: any) => this.menuService.update(id, data),
+      delete: (id: any) => this.menuService.delete(id)
+    },
+
+    columns: [
+      { field: 'menu_name', label: 'Name' },
+      { field: 'menu_type', label: 'Type' },
+      { field: 'icon', label: 'Icon' },
+      { field: 'route', label: 'Route' },
+      { field: 'status', label: 'Status', type: 'badge' }
+    ],
+
+    formFields: [
+      { name: 'menu_name', label: 'Name', type: 'text' },
+      { name: 'slug', label: 'Slug', type: 'text' },
+      { name: 'icon', label: 'Icon', type: 'text' },
+      { name: 'route', label: 'Route', type: 'text' },
+      {
+        name: 'menu_type',
+        label: 'Type',
+        type: 'select',
+        options: [
+          { id: 'menu', name: 'Menu' },
+          { id: 'sub-menu', name: 'Sub Menu' }
+        ]
+      },
+      { name: 'parent_id', label: 'Parent Menu', type: 'select', options: [] },
+      { name: 'order_no', label: 'Order', type: 'number' },
+      { name: 'status', label: 'Active', type: 'checkbox' }
+    ]
+  };
+
+  // ================= INIT =================
+  async ngOnInit() {
+    await this.loadData();
+    await this.loadMenus();
+    await this.loadPermissions();
   }
 
+  // ================= LOAD PERMISSIONS =================
   async loadPermissions() {
-    try {
-      const { data, error } = await this.supabase.client
-        .from('permissions')
-        .select('*')
-        .eq('is_active', true);
-
-      if (error) throw error;
-      this.permissionList = data || [];
-      this.filteredPermissionList = this.permissionList;
-    } catch (err) {
-      console.error('LOAD PERMISSIONS ERROR:', err);
-    }
+    this.permissionList = await this.permissionService.getPermissions();
+    this.filteredPermissionList = [...this.permissionList];
   }
 
-  filterPermissions(search: string) {
-    const term = search.toLowerCase();
-    this.filteredPermissionList = this.permissionList.filter(p =>
-      p.name.toLowerCase().includes(term)
-    );
-  }
+  async loadMenus() {
+    const data = await this.menuService.getAll();
 
-  get filteredMenus() {
-    return this.menus.filter(m =>
-      this.activeTab === 'active' ? m.status : !m.status
-    );
-  }
+    this.menus = data;
+    this.mainMenus = this.menus.filter(m => m.menu_type === 'menu');
 
-  get paginatedMenus() {
-    const start = (this.page - 1) * this.pageSize;
-    return this.filteredMenus.slice(start, start + this.pageSize);
-  }
+    const parentField = this.config.formFields.find(f => f.name === 'parent_id');
 
-  nextPage() { this.page++; }
-  prevPage() { if (this.page > 1) this.page--; }
-
-  get mainMenus() {
-    return this.menus.filter(m => m.menu_type === 'menu');
-  }
-
-  openCreateModal() {
-    this.isEditMode = false;
-    this.isViewMode = false;
-    this.selectedId = null;
-    this.permissionDropdownOpen = false;
-    this.permissionSearchControl.setValue('');
-    this.form.reset({
-      menu_name: '',
-      slug: '',
-      icon: '',
-      route: '',
-      parent_id: null,
-      order_no: 0,
-      menu_type: 'menu',
-      status: true,
-      permission_list: []
-    });
-    this.form.enable();
-    this.showModal = true;
-  }
-
-  openEditModal(m: any) {
-    this.isEditMode = true;
-    this.selectedId = m.id;
-    const permissions = (m.permission_list || []).map((p: any) => p.permission_id);
-    this.form.patchValue({
-      ...m,
-      permission_list: permissions
-    });
-    this.form.enable();
-    this.showModal = true;
-  }
-
-  openViewModal(m: any) {
-    this.isViewMode = true;
-    const permissions = (m.permission_list || []).map((p: any) => p.permission_id);
-    this.form.patchValue({
-      ...m,
-      permission_list: permissions
-    });
-    this.form.disable();
-    this.showModal = true;
-  }
-
-  closeModal() {
-    this.showModal = false;
-    this.permissionDropdownOpen = false;
-  }
-
-  async save(): Promise<void> {
-    if (this.form.invalid) return;
-    this.loader.show();
-    try {
-      const value = this.form.getRawValue();
-      if (value.menu_type === 'sub-menu' && !value.parent_id) {
-        Swal.fire('Error', 'Sub-menu must have parent menu', 'error');
-        return;
-      }
-
-      if (value.menu_type === 'menu') {
-        value.parent_id = null;
-      }
-
-      value.permission_list = (value.permission_list || []).map((id: number) => ({
-        permission_id: id
+    if (parentField) {
+      parentField.options = this.mainMenus.map(m => ({
+        id: m.id,
+        name: m.menu_name
       }));
-
-      if (this.isEditMode && this.selectedId) {
-        const { error } = await this.supabase.client
-          .from('menu')
-          .update(value)
-          .eq('id', this.selectedId);
-
-        if (error) throw error;
-        Swal.fire('Success', 'Menu updated', 'success');
-      } else {
-        const { error } = await this.supabase.client
-          .from('menu')
-          .insert(value);
-
-        if (error) throw error;
-        Swal.fire('Success', 'Menu created', 'success');
-      }
-      await this.loadMenus();
-      this.closeModal();
-    } catch (err) {
-      console.error('SAVE ERROR:', err);
-      Swal.fire('Error', 'Something went wrong', 'error');
-    } finally {
-      this.loader.hide();
     }
   }
 
-  async deleteMenu(id: number): Promise<void> {
-    const confirm = await Swal.fire({
-      title: 'Delete menu?',
-      text: 'This cannot be undone!',
-      icon: 'warning',
-      showCancelButton: true
+  // ================= OPEN MODAL =================
+  override openCreate() {
+    super.openCreate();
+    this.form.patchValue({ permission_list: [] });
+  }
+
+  override openEdit(row: any) {
+    super.openEdit(row);
+    this.form.patchValue({
+      permission_list: row.permission_list || []
     });
+  }
 
-    if (!confirm.isConfirmed) return;
-    this.loader.show();
-    try {
-      const { error } = await this.supabase.client
-        .from('menu')
-        .delete()
-        .eq('id', id);
+  // ================= PERMISSION LOGIC =================
+  togglePermission(id: string, event: any) {
+    let list = this.form.value.permission_list || [];
 
-      if (error) throw error;
-      Swal.fire('Deleted', 'Menu removed', 'success');
-      await this.loadMenus();
-      this.closeModal();
-    } catch (err) {
-      console.error('DELETE ERROR:', err);
-      Swal.fire('Error', 'Delete failed', 'error');
-    } finally {
-      this.loader.hide();
+    if (event.target.checked) {
+      list = [...list, id];
+    } else {
+      list = list.filter((x: any) => x !== id);
     }
+
+    this.form.patchValue({ permission_list: list });
+  }
+
+  removePermission(id: string) {
+    const list = (this.form.value.permission_list || []).filter((x: any) => x !== id);
+    this.form.patchValue({ permission_list: list });
   }
 
   togglePermissionDropdown() {
     this.permissionDropdownOpen = !this.permissionDropdownOpen;
   }
 
-  togglePermission(id: number, event: any) {
-    const list = this.form.value.permission_list || [];
-    if (event.target.checked) {
-      if (!list.includes(id)) list.push(id);
-    } else {
-      const index = list.indexOf(id);
-      if (index > -1) list.splice(index, 1);
-    }
-    this.form.patchValue({
-      permission_list: [...list]
-    });
-  }
-
-  removePermission(id: number) {
-    const updated = (this.form.value.permission_list || [])
-      .filter((x: number) => x !== id);
-    this.form.patchValue({
-      permission_list: updated
-    });
-  }
-
   isAllSelected(): boolean {
-    return this.filteredPermissionList.length > 0 &&
-      this.filteredPermissionList.every(p =>
-        this.form.value.permission_list.includes(p.id)
-      );
+    const list = this.form.value.permission_list || [];
+    return list.length === this.permissionList.length;
   }
 
   toggleSelectAll(event: any) {
-    if (event.target.checked) {
-      const allIds = this.filteredPermissionList.map(p => p.id);
-
-      const merged = Array.from(new Set([
-        ...(this.form.value.permission_list || []),
-        ...allIds
-      ]));
-      this.form.patchValue({ permission_list: merged });
-    } else {
-      const remaining = (this.form.value.permission_list || [])
-        .filter((id: number) =>
-          !this.filteredPermissionList.some(p => p.id === id)
-        );
-      this.form.patchValue({ permission_list: remaining });
-    }
+    const checked = event.target.checked;
+    this.form.patchValue({
+      permission_list: checked ? this.permissionList.map(p => p.id) : []
+    });
   }
 }

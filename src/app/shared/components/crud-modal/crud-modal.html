@@ -1,0 +1,88 @@
+<div class="modal fade show d-block" *ngIf="show">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+
+            <!-- HEADER -->
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    {{ title }}
+                </h5>
+                <button class="btn-close" (click)="onClose()"></button>
+            </div>
+
+            <!-- BODY -->
+            <div class="modal-body">
+
+                <form [formGroup]="form">
+
+                    <div class="row">
+
+                        <!-- NORMAL FIELDS -->
+                        <ng-container *ngFor="let f of fields">
+
+                            <!-- TEXT -->
+                            <div class="col-md-6 mb-2" *ngIf="f.type === 'text'">
+                                <label>{{ f.label }}</label>
+                                <input class="form-control" [formControlName]="f.name" [readonly]="isViewMode">
+                            </div>
+
+                            <!-- NUMBER -->
+                            <div class="col-md-6 mb-2" *ngIf="f.type === 'number'">
+                                <label>{{ f.label }}</label>
+                                <input type="number" class="form-control" [formControlName]="f.name"
+                                    [readonly]="isViewMode">
+                            </div>
+
+                            <!-- TEXTAREA -->
+                            <div class="col-12 mb-2" *ngIf="f.type === 'textarea'">
+                                <label>{{ f.label }}</label>
+                                <textarea class="form-control" [formControlName]="f.name"
+                                    [readonly]="isViewMode"></textarea>
+                            </div>
+
+                            <!-- SELECT -->
+                            <div class="col-md-6 mb-2" *ngIf="f.type === 'select'">
+                                <label>{{ f.label }}</label>
+                                <select class="form-control" [formControlName]="f.name" [disabled]="isViewMode">
+                                    <option *ngFor="let o of f.options" [value]="o.id">
+                                        {{ o.name }}
+                                    </option>
+                                </select>
+                            </div>
+
+                            <!-- CHECKBOX -->
+                            <div class="col-12 mb-2" *ngIf="f.type === 'checkbox'">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" [formControlName]="f.name"
+                                        [disabled]="isViewMode">
+                                    <label>{{ f.label }}</label>
+                                </div>
+                            </div>
+
+                        </ng-container>
+
+                    </div>
+
+                    <!-- CUSTOM TEMPLATE SLOT (🔥 IMPORTANT FOR MENU PERMISSIONS UI) -->
+                    <!-- <ng-container *ngIf="customTemplate" [ngTemplateOutlet]="customTemplate"
+                        [ngTemplateOutletContext]="{ form: form, isViewMode: isViewMode }">
+                    </ng-container> -->
+                    <ng-container *ngIf="customTemplate">
+                        <ng-container *ngTemplateOutlet="customTemplate"></ng-container>
+                    </ng-container>
+
+                </form>
+
+            </div>
+
+            <!-- FOOTER -->
+            <div class="modal-footer">
+                <button class="btn btn-primary" *ngIf="!isViewMode" (click)="onSave()">Save</button>
+                <button class="btn btn-secondary" (click)="onClose()">Close</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop fade show" *ngIf="show"></div>

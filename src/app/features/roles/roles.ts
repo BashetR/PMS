@@ -1,164 +1,58 @@
-import { Component, OnInit, AfterViewInit } from '@angular/core';
-import { SupabaseService } from '../../core/services/supabase.service';
+import { Component, OnInit } from '@angular/core';
+import { BaseCrudComponent } from '../../shared/base/base-crud.component';
+import { FormBuilder } from '@angular/forms';
+import { RoleService } from '../../core/services/role.service';
+import { CrudTable } from "../../shared/components/crud-table/crud-table";
+import { CrudModal } from "../../shared/components/crud-modal/crud-modal";
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import Swal from 'sweetalert2';
-import { AppCacheService } from '../../core/services/app-cache.service';
 import { LoaderService } from '../../core/services/loader.service';
-declare var bootstrap: any;
 
 @Component({
   selector: 'app-roles',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './roles.html',
-  styleUrl: './roles.css',
+  imports: [CrudTable, CrudModal, CommonModule]
 })
+export class Roles extends BaseCrudComponent implements OnInit {
 
-export class Roles implements OnInit, AfterViewInit {
-  roles: any[] = [];
-  activeTab: 'active' | 'inactive' = 'active';
-  form!: FormGroup;
-  isEditMode = false;
-  selectedRoleId: string | null = null;
-  private modalInstance: any;
+  constructor(
+    fb: FormBuilder,
+    loader: LoaderService,
+    private service: RoleService
+  ) {
+    super(fb, loader);
 
-  constructor(private supabase: SupabaseService, private fb: FormBuilder, private cache: AppCacheService, private loader: LoaderService) {
-    this.initForm();
-  }
-
-  ngOnInit() {
-    this.loadRoles();
-  }
-
-  ngAfterViewInit() {
-    const modalEl = document.getElementById('roleModal');
-    if (modalEl) {
-      this.modalInstance = new bootstrap.Modal(modalEl);
-    }
-  }
-
-  initForm() {
     this.form = this.fb.group({
-      role_name: ['', Validators.required],
+      role_name: [''],
       description: [''],
       status: [true]
     });
   }
 
-  async loadRoles() {
-    this.loader.show();
-    try {
-      const { data, error } = await this.supabase.client
-        .from('role')
-        .select('*')
-        .order('created_at', { ascending: false });
+  config = {
+    title: 'Roles',
 
-      if (error) throw error;
-      this.roles = data || [];
-    } catch (err: any) {
-      Swal.fire('Error', err.message || 'Failed to load roles', 'error');
-    } finally {
-      this.loader.hide();
-    }
-  }
+    api: {
+      getAll: () => this.service.getAll(),
+      create: (data: any) => this.service.create(data),
+      update: (id: any, data: any) => this.service.update(id, data),
+      delete: (id: any) => this.service.delete(id)
+    },
 
-  get filteredRoles() {
-    return this.roles.filter(r =>
-      this.activeTab === 'active' ? r.status : !r.status
-    );
-  }
+    columns: [
+      { field: 'role_name', label: 'Role Name' },
+      { field: 'description', label: 'Description', hidden: true },
+      { field: 'status', label: 'Status', type: 'badge' }
+    ],
 
-  changeTab(tab: 'active' | 'inactive') {
-    this.activeTab = tab;
-  }
+    formFields: [
+      { name: 'role_name', label: 'Role Name', type: 'text' },
+      { name: 'description', label: 'Description', type: 'textarea' },
+      { name: 'status', label: 'Active', type: 'checkbox' }
+    ]
+  };
 
-  openCreateModal() {
-    this.isEditMode = false;
-    this.selectedRoleId = null;
-    this.form.reset({
-      role_name: '',
-      description: '',
-      status: true
-    });
-    this.modalInstance.show();
-  }
-
-  openEdit(role: any) {
-    this.isEditMode = true;
-    this.selectedRoleId = role.id;
-    this.form.patchValue({
-      role_name: role.role_name,
-      description: role.description,
-      status: role.status
-    });
-    this.modalInstance.show();
-  }
-
-  async save() {
-    if (this.form.invalid) return;
-    this.loader.show();
-    try {
-      const value = this.form.value;
-      const now = new Date().toISOString();
-      if (this.isEditMode && this.selectedRoleId) {
-        const { error } = await this.supabase.client
-          .from('role')
-          .update({
-            ...value,
-            updated_at: now
-          })
-          .eq('id', this.selectedRoleId);
-
-        if (error) throw error;
-        Swal.fire('Success', 'Role updated', 'success');
-      } else {
-        const { error } = await this.supabase.client
-          .from('role')
-          .insert([{
-            ...value,
-            created_at: now
-          }]);
-
-        if (error) throw error;
-        Swal.fire('Success', 'Role created', 'success');
-      }
-      await this.loadRoles();
-      this.modalInstance.hide();
-    } catch (err: any) {
-      Swal.fire('Error', err.message || 'Save failed', 'error');
-    } finally {
-      this.loader.hide();
-    }
-  }
-
-  async deleteRole(id: string) {
-    const confirm = await Swal.fire({
-      title: 'Delete role?',
-      text: 'This cannot be undone!',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes delete'
-    });
-    if (!confirm.isConfirmed) return;
-    this.loader.show();
-    try {
-      const { error } = await this.supabase.client
-        .from('role')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      await this.loadRoles();
-      Swal.fire('Deleted', 'Role removed', 'success');
-    } catch (err: any) {
-      Swal.fire('Error', err.message || 'Delete failed', 'error');
-    } finally {
-      this.loader.hide();
-    }
-  }
-
-  openPermissions(role: any) {
-    console.log('Permissions for:', role);
+  async ngOnInit() {
+    await this.loadData();
   }
 }

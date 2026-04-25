@@ -1,91 +1,56 @@
-<div class="card">
-    <!-- ================= HEADER ================= -->
-    <div class="card-header">
-        <h1 class="card-title"><b>Users</b></h1>
+<div class="container-fluid">
 
-        <div class="card-tools">
-            <button class="btn btn-primary btn-sm" (click)="openCreateModal()">
-                <i class="fas fa-plus"></i> New
-            </button>
-        </div>
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between mb-3">
+        <h3>{{ config.title }}</h3>
+        <button class="btn btn-primary" (click)="openCreate()">New</button>
     </div>
 
-    <div class="card-body">
+    <!-- TABS -->
+    <ul class="nav nav-pills mb-3">
+        <li class="nav-item me-2">
+            <a class="nav-link" [class.active]="activeTab==='active'" (click)="changeTab('active')">Active</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" [class.active]="activeTab==='inactive'" (click)="changeTab('inactive')">Inactive</a>
+        </li>
+    </ul>
 
-        <!-- TABLE -->
-        <div class="table-responsive">
-            <table class="table table-bordered table-hover">
+    <!-- TABLE -->
+    <app-crud-table [data]="paginatedData" [columns]="config.columns" (edit)="openEdit($event)"
+        (remove)="delete($event)">
+    </app-crud-table>
 
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
+    <!-- PAGINATION -->
+    <div class="d-flex justify-content-between mt-3">
 
-                <tbody>
-                    <tr *ngFor="let user of users">
+        <small>
+            Showing {{ (page - 1) * pageSize + 1 }}
+            to {{ page * pageSize }}
+            of {{ filteredData.length }}
+        </small>
 
-                        <td>{{ user.full_name }}</td>
-                        <td>{{ user.email }}</td>
+        <ul class="pagination pagination-sm">
 
-                        <td>
-                            {{ user.role?.role_name || '-' }}
-                        </td>
+            <li class="page-item" [class.disabled]="page===1">
+                <a class="page-link" (click)="prevPage()">«</a>
+            </li>
 
-                        <td>
-                            {{ user.is_active ? 'Active' : 'Inactive' }}
-                        </td>
+            <li class="page-item" *ngFor="let p of totalPagesArray" [class.active]="p===page">
+                <a class="page-link" (click)="goToPage(p)">{{ p }}</a>
+            </li>
 
-                        <td class="d-flex gap-1">
-                            <button class="btn btn-info btn-sm" (click)="openViewModal(user)"><i class="fas fa-eye"></i></button>
-                            <button class="btn btn-warning btn-sm" (click)="openEditModal(user)"><i class="fas fa-edit"></i></button>
-                            <button class="btn btn-danger btn-sm" (click)="deleteUser(user.id)"><i class="fas fa-trash"></i></button>
-                        </td>
+            <li class="page-item" [class.disabled]="page===totalPages">
+                <a class="page-link" (click)="nextPage()">»</a>
+            </li>
 
-                    </tr>
-                </tbody>
-
-            </table>
-        </div>
+        </ul>
 
     </div>
-</div>
 
-<!-- MODAL -->
-<div class="modal-overlay" *ngIf="showModal">
-    <div class="modal-box">
+    <!-- MODAL -->
+    <app-crud-modal [show]="showModal" [form]="form" [fields]="config.formFields" [isEditMode]="isEditMode"
+        (close)="closeModal()" (save)="save()">
+    </app-crud-modal>
 
-        <h3>{{ isViewMode ? 'View' : isEditMode ? 'Edit' : 'Create' }} User</h3>
-
-        <form [formGroup]="form">
-
-            <input class="form-control mb-2" placeholder="Full Name" formControlName="full_name">
-
-            <input class="form-control mb-2" placeholder="Email" formControlName="email">
-
-            <!-- ROLE DROPDOWN -->
-            <select class="form-control mb-2" formControlName="role_id">
-                <option value="">Select Role</option>
-                <option *ngFor="let r of roles" [value]="r.id">
-                    {{ r.role_name }}
-                </option>
-            </select>
-
-            <label>
-                <input type="checkbox" formControlName="is_active">
-                Active
-            </label>
-
-        </form>
-
-        <div class="mt-3 d-flex gap-2">
-            <button class="btn btn-success" *ngIf="!isViewMode" (click)="saveUser()">Save</button>
-            <button class="btn btn-secondary" (click)="closeModal()">Close</button>
-        </div>
-
-    </div>
 </div>

@@ -3,6 +3,7 @@ import { Component, OnInit } from '@angular/core';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { FormsModule } from '@angular/forms';
 import { LoaderService } from '../../core/services/loader.service';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-role-permissions',
@@ -20,10 +21,18 @@ export class RolePermissions implements OnInit {
   selectedRole: number | null = null;
   selectedMenu: number | null = null;
   assignedPermissions: Set<string> = new Set();
+  roleId!: number;
 
-  constructor(private supabase: SupabaseService, private loader: LoaderService) { }
+  constructor(private supabase: SupabaseService, private route: ActivatedRoute, private loader: LoaderService) { }
 
   async ngOnInit() {
+    // this.roleId = Number(this.route.snapshot.paramMap.get('roleId'));
+    // this.selectedRole = this.roleId;
+    const param = this.route.snapshot.paramMap.get('roleId');
+    if (param) {
+      this.roleId = Number(param);
+      this.selectedRole = this.roleId;
+    }
     await this.loadInitialData();
   }
 
