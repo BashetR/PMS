@@ -1,38 +1,53 @@
 import { Injectable } from '@angular/core';
-import { CanActivate, Router } from '@angular/router';
+import { CanActivate, Router, ActivatedRouteSnapshot } from '@angular/router';
 import { SupabaseService } from '../services/supabase.service';
+import { RoleService } from '../services/role.service';
+import { CacheService } from '../services/cache.service';
 
 @Injectable({
     providedIn: 'root'
 })
-
 export class RoleGuard implements CanActivate {
 
-    constructor(private supabase: SupabaseService, private router: Router) { }
+    constructor(
+        private supabase: SupabaseService,
+        private roleService: RoleService,
+        private cache: CacheService,
+        private router: Router
+    ) { }
 
-    async canActivate(): Promise<boolean> {
-        const { data: auth } = await this.supabase.client.auth.getUser();
-        if (!auth?.user) {
-            this.router.navigate(['/login']);
-            return false;
+    async canActivate(route: ActivatedRouteSnapshot): Promise<boolean | any> {
+
+        // =========================
+        // 1. GET USER (SAFE)
+        // =========================
+        const user = await this.cache.get<any>('auth_user')
+            ?? await this.supabase.getUser();
+
+        if (!user) {
+            return this.router.createUrlTree(['/login']);
         }
 
-        const { data: profile } = await this.supabase.client
-            .from('profiles')
-            .select('role')
-            .eq('id', auth.user.id)
-            .single();
+        this.cache.set('auth_user', user);
 
-        if (!profile) {
-            this.router.navigate(['/login']);
-            return false;
-        }
+        // =========================
+        // 2. GET ROLE (CACHED SERVICE)
+        // =========================
+        const profile = await this.cache.get<any>(`profile_${user.id}`);
 
-        const isAdmin = profile.role === 'Admin';
+        const roleData = profile?.role_id
+            ? await this.roleService.getById(profile.role_id)
+            : null;
 
-        if (!isAdmin) {
-            this.router.navigate(['/unauthorized']);
-            return false;
+        const roleName = roleData?.role_name;
+
+        // =========================
+        // 3. SAFE ROLE CHECK
+        // =========================
+        const allowedRoles = route.data['roles'] as string[];
+
+        if (!allowedRoles || !roleName || !allowedRoles.includes(roleName)) {
+            return this.router.createUrlTree(['/unauthorized']);
         }
 
         return true;

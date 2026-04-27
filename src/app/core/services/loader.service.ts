@@ -1,26 +1,52 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import { LoaderState } from '../../shared/models/loader.model';
 
 @Injectable({
   providedIn: 'root',
 })
-
 export class LoaderService {
-  private loaderSubject = new BehaviorSubject<LoaderState>({ show: false });
+
+  private requestCount = 0;
+
+  private loaderSubject = new BehaviorSubject<boolean>(false);
   loaderState$ = this.loaderSubject.asObservable();
 
-  constructor() { }
+  // =========================
+  // SHOW LOADER
+  // =========================
+  show(): void {
+    this.requestCount++;
 
-  show() {
-    this.loaderSubject.next({ show: true });
+    if (this.requestCount === 1) {
+      this.loaderSubject.next(true);
+    }
   }
 
-  hide() {
-    this.loaderSubject.next({ show: false });
+  // =========================
+  // HIDE LOADER
+  // =========================
+  hide(): void {
+    if (this.requestCount > 0) {
+      this.requestCount--;
+    }
+
+    if (this.requestCount === 0) {
+      this.loaderSubject.next(false);
+    }
   }
 
-  toggle(state: boolean) {
-    this.loaderSubject.next({ show: state });
+  // =========================
+  // FORCE STOP (SAFE RESET)
+  // =========================
+  forceStop(): void {
+    this.requestCount = 0;
+    this.loaderSubject.next(false);
+  }
+
+  // =========================
+  // OPTIONAL: CURRENT STATE
+  // =========================
+  get isLoading(): boolean {
+    return this.requestCount > 0;
   }
 }

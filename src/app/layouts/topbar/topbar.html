@@ -1,66 +1,32 @@
 <nav class="main-header navbar navbar-expand bg-body shadow-sm">
-
-    <!-- ================= LEFT MENU ================= -->
     <ul class="navbar-nav align-items-center">
-
-        <!-- ================= DYNAMIC MENUS ================= -->
         <li class="nav-item position-relative" *ngFor="let menu of treeMenus">
-
-            <!-- ================= CASE 1: NO CHILDREN (DIRECT LINK) ================= -->
             <a *ngIf="!menu.children?.length" class="nav-link" [routerLink]="menu.route">
-
                 <i [class]="menu.icon"></i>
-
-                <span class="ms-1">
-                    {{ menu.menu_name }}
-                </span>
-
+                <span class="ms-1">{{ menu.menu_name }}</span>
             </a>
 
-            <!-- ================= CASE 2: HAS CHILDREN (DROPDOWN) ================= -->
             <a *ngIf="menu.children?.length" class="nav-link d-flex align-items-center" href="#"
                 (click)="toggleMenu(menu.id); $event.preventDefault()">
-
                 <i [class]="menu.icon"></i>
-
-                <span class="ms-1">
-                    {{ menu.menu_name }}
-                </span>
-
+                <span class="ms-1">{{ menu.menu_name }}</span>
                 <i class="bi bi-caret-down-fill ms-1"></i>
-
             </a>
 
-            <!-- ================= CHILD MENU ================= -->
             <ul class="dropdown-menu shadow" *ngIf="menu.children?.length && openMenuId === menu.id"
                 style="display:block; position:absolute; min-width:200px; z-index:999;">
-
                 <li *ngFor="let child of menu.children">
-
                     <a class="dropdown-item" [routerLink]="child.route" (click)="closeMenus()">
-
                         <i [class]="child.icon"></i>
-
-                        <span class="ms-1">
-                            {{ child.menu_name }}
-                        </span>
-
+                        <span class="ms-1">{{ child.menu_name }}</span>
                     </a>
-
                 </li>
-
             </ul>
-
         </li>
-
     </ul>
 
-    <!-- ================= RIGHT MENU ================= -->
     <ul class="navbar-nav ms-auto align-items-center">
-
-        <!-- NOTIFICATIONS -->
         <li class="nav-item dropdown">
-
             <a class="nav-link">
                 <i class="bi bi-bell-fill"></i>
                 <span class="badge bg-warning">3</span>
@@ -71,56 +37,26 @@
                     No new notifications
                 </span>
             </div>
-
         </li>
 
-
-        <!-- USER MENU -->
         <li class="nav-item dropdown user-menu position-relative">
-
-            <!-- TRIGGER -->
-            <a class="nav-link d-flex align-items-center" href="#"
-                (click)="toggleUserDropdown(); $event.preventDefault()">
-
+            <a class="nav-link d-flex align-items-center" href="#" (click)="toggleUserDropdown(); $event.preventDefault()">
                 <img [src]="avatar" class="rounded-circle me-2" style="width:32px;height:32px">
-
-                <span class="d-none d-md-inline">
-                    {{ userName }}
-                </span>
-
+                <span class="d-none d-md-inline">{{ userName }}</span>
             </a>
 
-            <!-- DROPDOWN (ANGULAR CONTROLLED) -->
-            <ul class="dropdown-menu dropdown-menu-end shadow" *ngIf="userDropdownOpen"
-                style="display:block; position:absolute; right:0; min-width:250px; z-index:999;">
-
-                <!-- HEADER -->
+            <ul class="dropdown-menu dropdown-menu-end shadow" *ngIf="userDropdownOpen" style="display:block; position:absolute; right:0; min-width:250px; z-index:999;">
                 <li class="user-header text-bg-primary text-center p-3">
-
                     <img [src]="avatar" class="rounded-circle mb-2" style="width:60px;height:60px">
-
                     <p class="mb-0 fw-bold">{{ userName }}</p>
                     <small>{{ userEmail }}</small>
-
                 </li>
 
-                <!-- ACTIONS -->
                 <li class="p-2 d-flex justify-content-between">
-
-                    <button class="btn btn-outline-secondary btn-sm" (click)="goProfile(); closeAll()">
-                        Profile
-                    </button>
-
-                    <button class="btn btn-outline-danger btn-sm" (click)="logout(); closeAll()">
-                        Logout
-                    </button>
-
+                    <button class="btn btn-outline-secondary btn-sm" (click)="goProfile(); closeAll()">Profile</button>
+                    <button class="btn btn-outline-danger btn-sm" (click)="logout(); closeAll()">Logout</button>
                 </li>
-
             </ul>
-
         </li>
-
     </ul>
-
 </nav>

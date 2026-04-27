@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
-import { SupabaseService } from '../../core/services/supabase.service';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { LoaderService } from '../../core/services/loader.service';
+import { RolePermissionService } from '../../core/services/role-permission.service';
 
 @Component({
   selector: 'app-role-permissions',
@@ -21,29 +22,25 @@ export class RolePermissions implements OnInit {
   selectedMenu: number | null = null;
   assignedPermissions: Set<string> = new Set();
 
-  constructor(private supabase: SupabaseService, private loader: LoaderService) { }
+  constructor(private route: ActivatedRoute, private loader: LoaderService, private service: RolePermissionService) { }
 
   async ngOnInit() {
-    await this.loadInitialData();
+    this.route.paramMap.subscribe(async params => {
+      const id = params.get('roleId');
+      if (id) {
+        this.selectedRole = Number(id);
+      }
+      await this.loadInitialData();
+    });
   }
 
   async loadInitialData() {
     this.loader.show();
     try {
-      const [rolesRes, menusRes, permRes] = await Promise.all([
-        this.supabase.client.from('role').select('*').order('role_name'),
-        this.supabase.client.from('menu').select('*').order('menu_name'),
-        this.supabase.client.from('permissions').select('*').order('name')
-      ]);
-
-      if (rolesRes.error) throw rolesRes.error;
-      if (menusRes.error) throw menusRes.error;
-      if (permRes.error) throw permRes.error;
-      this.roles = rolesRes.data || [];
-      this.menus = menusRes.data || [];
-      this.permissions = permRes.data || [];
-    } catch (err) {
-      console.error('LOAD INITIAL ERROR:', err);
+      const res = await this.service.getInitialData();
+      this.roles = res.roles;
+      this.menus = res.menus;
+      this.permissions = res.permissions;
     } finally {
       this.loader.hide();
     }
@@ -55,32 +52,16 @@ export class RolePermissions implements OnInit {
     if (!this.selectedMenu) return;
     this.loader.show();
     try {
-      const { data, error } = await this.supabase.client
-        .from('menu')
-        .select('permission_list')
-        .eq('id', this.selectedMenu)
-        .single();
-
-      if (error) throw error;
-      const permissionIds: string[] = (data?.permission_list || [])
-        .filter((x: any) => x && x.permission_id)
+      const permissionIds: any[] =
+        await this.service.getMenuPermissions(this.selectedMenu);
+      const ids = permissionIds
+        .filter((x: any) => x?.permission_id)
         .map((x: any) => x.permission_id);
 
-      if (!permissionIds.length) {
-        this.filteredPermissions = [];
-        return;
-      }
-
-      const { data: perms, error: permError } = await this.supabase.client
-        .from('permissions')
-        .select('*')
-        .in('id', permissionIds);
-
-      if (permError) throw permError;
-      this.filteredPermissions = perms || [];
+      this.filteredPermissions = this.permissions.filter(p =>
+        ids.includes(p.id)
+      );
       await this.loadRoleMappings();
-    } catch (err) {
-      console.error('MENU CHANGE ERROR:', err);
     } finally {
       this.loader.hide();
     }
@@ -88,60 +69,38 @@ export class RolePermissions implements OnInit {
 
   async loadRoleMappings() {
     if (!this.selectedRole || !this.selectedMenu) return;
-    try {
-      const { data, error } = await this.supabase.client
-        .from('role_menu_permission_relationship_map')
-        .select('permission_id')
-        .eq('role_id', this.selectedRole)
-        .eq('menu_id', this.selectedMenu);
+    const data = await this.service.getRoleMappings(
+      this.selectedRole,
+      this.selectedMenu
+    );
 
-      if (error) throw error;
-      const ids = (data || []).map(x => x.permission_id);
-      this.assignedPermissions = new Set(ids);
-    } catch (err) {
-      console.error('LOAD ROLE MAPPING ERROR:', err);
-    }
+    this.assignedPermissions = new Set(
+      data.map(x => x.permission_id)
+    );
   }
 
-  togglePermission(permissionId: string, event: any) {
+  togglePermission(id: string, event: any) {
     if (event.target.checked) {
-      this.assignedPermissions.add(permissionId);
+      this.assignedPermissions.add(id);
     } else {
-      this.assignedPermissions.delete(permissionId);
+      this.assignedPermissions.delete(id);
     }
   }
 
-  isChecked(permissionId: string): boolean {
-    return this.assignedPermissions.has(permissionId);
+  isChecked(id: string): boolean {
+    return this.assignedPermissions.has(id);
   }
 
   async saveAll() {
     if (!this.selectedRole || !this.selectedMenu) return;
     this.loader.show();
     try {
-      const { error: deleteError } = await this.supabase.client
-        .from('role_menu_permission_relationship_map')
-        .delete()
-        .eq('role_id', this.selectedRole)
-        .eq('menu_id', this.selectedMenu);
-
-      if (deleteError) throw deleteError;
-      const rows = Array.from(this.assignedPermissions).map(id => ({
-        role_id: this.selectedRole,
-        menu_id: this.selectedMenu,
-        permission_id: id
-      }));
-
-      if (rows.length) {
-        const { error: insertError } = await this.supabase.client
-          .from('role_menu_permission_relationship_map')
-          .insert(rows);
-        if (insertError) throw insertError;
-      }
+      await this.service.saveMappings(
+        this.selectedRole,
+        this.selectedMenu,
+        Array.from(this.assignedPermissions)
+      );
       alert('Permissions saved successfully');
-    } catch (err) {
-      console.error('SAVE ERROR:', err);
-      alert('Save failed');
     } finally {
       this.loader.hide();
     }

@@ -3,7 +3,7 @@
         <h1 class="card-title"><b>Permissions</b></h1>
 
         <div class="card-tools">
-            <button class="btn btn-primary btn-sm" (click)="openCreateModal()">
+            <button *ngIf="can('create')" class="btn btn-primary btn-sm" (click)="openCreateModal()">
                 <i class="fas fa-plus"></i> New
             </button>
         </div>
@@ -56,13 +56,9 @@
                         </td>
                         <td>{{ p.created_at | date:'short' }}</td>
                         <td>
-                            <button class="btn btn-warning btn-sm me-1" (click)="openEditModal(p)">
-                                <i class="fas fa-edit"></i>
-                            </button>
-
-                            <button class="btn btn-danger btn-sm" (click)="confirmDelete(p)">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                            <button *ngIf="can('view')" class="btn btn-info btn-sm" (click)="openViewModal(p)"><i class="fas fa-eye"></i></button>
+                            <button *ngIf="can('edit')" class="btn btn-warning btn-sm me-1" (click)="openEditModal(p)"><i class="fas fa-edit"></i></button>
+                            <button *ngIf="can('delete')" class="btn btn-danger btn-sm" (click)="confirmDelete(p)"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>
                 </tbody>
@@ -122,7 +118,7 @@
             </div>
 
             <div class="modal-footer">
-                <button class="btn btn-primary" (click)="save()">Save</button>
+                <button *ngIf="!isViewMode && can(isEditMode ? 'edit' : 'create')" class="btn btn-primary" (click)="save()">Save</button>
                 <button class="btn btn-secondary" (click)="closeModal()">Close</button>
             </div>
         </div>
