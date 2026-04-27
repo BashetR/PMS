@@ -22,6 +22,10 @@ export const ADMIN_ROUTES: Routes = [
         loadComponent: () => import('../role-permissions/role-permissions').then(m => m.RolePermissions),
     },
     {
+        path: 'role-permissions/:roleId',
+        loadComponent: () => import('../role-permissions/role-permissions').then(m => m.RolePermissions),
+    },
+    {
         path: 'menus',
         loadComponent: () => import('../menus/menus').then(m => m.Menus),
     },

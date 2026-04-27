@@ -1,15 +1,5 @@
-<!-- <div [class.hidden]="!show">
-    <div class="overlay-wrapper">
-        <div *ngIf="show" class="overlay">
-            <div class="preloader flex-column justify-content-center align-items-center">
-                <img class="animation__shake" src="../../../assets/images/logo/logo.png" alt="AdminLTELogo" height="60"
-                    width="60">
-            </div>
-        </div>
-    </div>
-</div> -->
-<ng-container *ngIf="loaderService.loaderState$ | async as state">
-    <div class="loader-overlay" *ngIf="state.show">
+<ng-container>
+    <div *ngIf="loader$ | async" class="loader-overlay">
         <div class="preloader flex-column justify-content-center align-items-center">
             <img class="animation__shake" src="assets/images/logo/logo.png" alt="Loading..." height="60" width="60" />
         </div>

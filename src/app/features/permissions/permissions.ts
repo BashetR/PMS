@@ -1,9 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, AfterViewInit } from '@angular/core';
-import { SupabaseService } from '../../core/services/supabase.service';
 import { Validators, FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
+
 import Swal from 'sweetalert2';
+
 import { LoaderService } from '../../core/services/loader.service';
+import { PermissionService } from '../../core/services/permission.service';
+
 declare var bootstrap: any;
 
 @Component({
@@ -13,24 +16,34 @@ declare var bootstrap: any;
   templateUrl: './permissions.html',
   styleUrl: './permissions.css',
 })
-
 export class Permissions implements OnInit, AfterViewInit {
+
   permissions: any[] = [];
   activeTab = 'active';
+
   form!: FormGroup;
   isEditMode = false;
   isViewMode = false;
   selectedPermissionId: string | null = null;
+
   page = 1;
   pageSize = 5;
+
   private modalInstance: any;
 
-  constructor(private supabase: SupabaseService, private fb: FormBuilder, private loader: LoaderService) {
+  userMenuId = 8; // ✅ Permissions menu id
+
+  constructor(
+    private permissionService: PermissionService, // ✅ USE SERVICE
+    private permission: PermissionService,        // for RBAC check
+    private loader: LoaderService,
+    private fb: FormBuilder
+  ) {
     this.initForm();
   }
 
-  async ngOnInit() {
-    await this.loadPermissions();
+  ngOnInit() {
+    this.loadPermissions();
   }
 
   ngAfterViewInit() {
@@ -43,6 +56,16 @@ export class Permissions implements OnInit, AfterViewInit {
     }
   }
 
+  // =========================
+  // PERMISSION CHECK
+  // =========================
+  can(action: string) {
+    return this.permission.has(this.userMenuId, action);
+  }
+
+  // =========================
+  // FORM
+  // =========================
   initForm() {
     this.form = this.fb.group({
       name: ['', Validators.required],
@@ -51,24 +74,24 @@ export class Permissions implements OnInit, AfterViewInit {
     });
   }
 
+  // =========================
+  // LOAD
+  // =========================
   async loadPermissions() {
     this.loader.show();
     try {
-      const { data, error } = await this.supabase.client
-        .from('permissions')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      this.permissions = data || [];
+      this.permissions = await this.permissionService.getPermissions();
       this.page = 1;
     } catch (err: any) {
-      Swal.fire('Error', err.message, 'error');
+      Swal.fire('Error', err.message || 'Failed to load', 'error');
     } finally {
       this.loader.hide();
     }
   }
 
+  // =========================
+  // FILTER + PAGINATION
+  // =========================
   get filteredPermissions() {
     return this.permissions.filter(p =>
       this.activeTab === 'active' ? p.is_active : !p.is_active
@@ -105,61 +128,90 @@ export class Permissions implements OnInit, AfterViewInit {
     this.page = 1;
   }
 
+  // =========================
+  // MODAL
+  // =========================
   openCreateModal() {
     this.isEditMode = false;
+    this.isViewMode = false;
     this.selectedPermissionId = null;
+
     this.form.reset({
       name: '',
       description: '',
       is_active: true
     });
+
     this.form.enable();
     this.modalInstance.show();
   }
 
   openEditModal(p: any) {
     this.isEditMode = true;
+    this.isViewMode = false;
     this.selectedPermissionId = p.id;
+
     this.form.patchValue(p);
+    this.form.enable();
+
+    this.modalInstance.show();
+  }
+
+  openViewModal(p: any) {
+    this.isViewMode = true;
+    this.isEditMode = false;
+    this.selectedPermissionId = p.id;
+
+    this.form.patchValue(p);
+    this.form.disable();
+
     this.modalInstance.show();
   }
 
   closeModal() {
-    if (this.modalInstance) {
-      this.modalInstance.hide();
-    }
+    this.modalInstance?.hide();
   }
 
+  // =========================
+  // SAVE
+  // =========================
   async save() {
     if (this.form.invalid) return;
+
     this.loader.show();
+
     try {
       const value = this.form.getRawValue();
+
       if (this.isEditMode && this.selectedPermissionId) {
-        const { error } = await this.supabase.client
-          .from('permissions')
-          .update(value)
-          .eq('id', this.selectedPermissionId);
 
-        if (error) throw error;
+        await this.permissionService.updatePermission(
+          this.selectedPermissionId,
+          value
+        );
+
         Swal.fire('Updated!', 'Permission updated', 'success');
-      } else {
-        const { error } = await this.supabase.client
-          .from('permissions')
-          .insert([value]);
 
-        if (error) throw error;
+      } else {
+
+        await this.permissionService.createPermission(value);
+
         Swal.fire('Created!', 'Permission created', 'success');
       }
+
       await this.loadPermissions();
       this.closeModal();
+
     } catch (err: any) {
-      Swal.fire('Error', err.message, 'error');
+      Swal.fire('Error', err.message || 'Save failed', 'error');
     } finally {
       this.loader.hide();
     }
   }
 
+  // =========================
+  // DELETE
+  // =========================
   confirmDelete(permission: any) {
     Swal.fire({
       title: 'Are you sure?',
@@ -177,17 +229,16 @@ export class Permissions implements OnInit, AfterViewInit {
 
   async deletePermission(id: string) {
     this.loader.show();
-    try {
-      const { error } = await this.supabase.client
-        .from('permissions')
-        .delete()
-        .eq('id', id);
 
-      if (error) throw error;
+    try {
+      await this.permissionService.deletePermission(id);
+
       Swal.fire('Deleted!', 'Permission deleted successfully', 'success');
+
       await this.loadPermissions();
+
     } catch (err: any) {
-      Swal.fire('Error', err.message, 'error');
+      Swal.fire('Error', err.message || 'Delete failed', 'error');
     } finally {
       this.loader.hide();
     }

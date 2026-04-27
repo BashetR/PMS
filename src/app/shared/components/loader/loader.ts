@@ -1,8 +1,6 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import { Subscription } from 'rxjs';
-import { LoaderState } from '../../models/loader.model';
-import { LoaderService } from '../../../core/services/loader.service';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { LoaderService } from '../../../core/services/loader.service';
 
 @Component({
   selector: 'app-loader',
@@ -12,21 +10,11 @@ import { CommonModule } from '@angular/common';
   imports: [CommonModule],
 })
 
-export class Loader implements OnInit, OnDestroy {
-  show = false;
-  // private subscription?: Subscription;
+export class Loader {
 
   constructor(public loaderService: LoaderService) { }
 
-  ngOnInit() {
-    // this.subscription = this.loaderService.loaderState$.subscribe(
-    //   (state: LoaderState) => {
-    //     this.show = state.show;
-    //   }
-    // );
-  }
-
-  ngOnDestroy() {
-    // this.subscription?.unsubscribe();
+  get loader$() {
+    return this.loaderService.loaderState$;
   }
 }

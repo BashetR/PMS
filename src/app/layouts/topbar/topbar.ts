@@ -1,8 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
-import { SupabaseService } from '../../core/services/supabase.service';
 import { CommonModule } from '@angular/common';
 import { LoaderService } from '../../core/services/loader.service';
+import { SupabaseService } from '../../core/services/supabase.service';
+import { MenuService } from '../../core/services/menu.service';
+import { Auth } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-topbar',
@@ -11,25 +13,38 @@ import { LoaderService } from '../../core/services/loader.service';
   templateUrl: './topbar.html',
   styleUrl: './topbar.css'
 })
-
 export class Topbar implements OnInit {
+
   userName: string = 'User';
   userEmail: string = '';
   avatar: string = 'assets/images/profile_Image/avt.png';
-  userId: string | null = null;
+
   user: any;
-  menus: any[] = [];
+  userId: string | null = null;
+  roleId: number | null = null;
+
   treeMenus: any[] = [];
   openMenuId: number | null = null;
   userDropdownOpen = false;
 
-  constructor(private supabase: SupabaseService, private router: Router, private loader: LoaderService) { }
+  constructor(
+    private supabase: SupabaseService,
+    private auth: Auth,
+    private menuService: MenuService,
+    private router: Router,
+    private loader: LoaderService
+  ) { }
 
   async ngOnInit() {
     this.loader.show();
+
     try {
       await this.loadUser();
-      await this.loadMenus();
+
+      if (this.roleId) {
+        await this.loadMenusByRole(this.roleId);
+      }
+
     } catch (err) {
       console.error('TOPBAR INIT ERROR:', err);
     } finally {
@@ -37,66 +52,44 @@ export class Topbar implements OnInit {
     }
   }
 
+  // =========================
+  // USER + ROLE (FIXED)
+  // =========================
   async loadUser(): Promise<void> {
-    try {
-      const { data: auth, error } = await this.supabase.client.auth.getUser();
-      if (error || !auth?.user) return;
-      this.user = auth.user;
-      this.userId = this.user.id;
-      this.userEmail = this.user.email || '';
 
-      const { data: profile, error: profileError } = await this.supabase.client
-        .from('profiles')
-        .select('*')
-        .eq('id', this.user.id)
-        .maybeSingle();
+    const user = await this.supabase.getUser();
+    if (!user) return;
 
-      if (profileError) throw profileError;
-      if (profile) {
-        this.userName = profile.username || profile.full_name || 'User';
-        this.avatar = profile.avatar_url || this.avatar;
-      }
-    } catch (err) {
-      console.error('LOAD USER ERROR:', err);
+    this.user = user;
+    this.userId = user.id;
+    this.userEmail = user.email || '';
+
+    const { data: profile } = await this.supabase.client
+      .from('profiles')
+      .select('username, full_name, avatar_url, role_id')
+      .eq('id', this.userId)
+      .maybeSingle();
+
+    if (profile) {
+      this.userName = profile.username || profile.full_name || 'User';
+      this.avatar = profile.avatar_url || this.avatar;
+      this.roleId = profile.role_id;   // ✅ IMPORTANT
     }
   }
 
-  async loadMenus() {
-    try {
-      const { data, error } = await this.supabase.client
-        .from('menu')
-        .select('*')
-        .eq('status', true)
-        .order('order_no', { ascending: true });
+  // =========================
+  // ROLE BASED MENU (FIXED)
+  // =========================
+  async loadMenusByRole(roleId: number) {
 
-      if (error) throw error;
-      this.menus = data || [];
-      this.buildTree();
-    } catch (err) {
-      console.error('MENU LOAD ERROR:', err);
-    }
+    const tree = await this.menuService.getMenusByRole(roleId);
+
+    this.treeMenus = tree || [];
   }
 
-  buildTree() {
-    const map = new Map<number, any>();
-    this.treeMenus = [];
-    this.menus.forEach(menu => {
-      map.set(Number(menu.id), { ...menu, children: [] });
-    });
-    map.forEach(menu => {
-      const parentId =
-        menu.parent_id !== null && menu.parent_id !== undefined
-          ? Number(menu.parent_id)
-          : null;
-
-      if (parentId && map.has(parentId)) {
-        map.get(parentId).children.push(menu);
-      } else {
-        this.treeMenus.push(menu);
-      }
-    });
-  }
-
+  // =========================
+  // UI
+  // =========================
   toggleMenu(id: number) {
     this.openMenuId = this.openMenuId === id ? null : id;
   }
@@ -118,10 +111,8 @@ export class Topbar implements OnInit {
     this.loader.show();
     try {
       this.closeMenus();
-      await this.supabase.client.auth.signOut();
+      await this.auth.logout();
       this.router.navigateByUrl('/login');
-    } catch (err) {
-      console.error('LOGOUT ERROR:', err);
     } finally {
       this.loader.hide();
     }

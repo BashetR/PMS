@@ -1,8 +1,12 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { SupabaseService } from '../../core/services/supabase.service';
+import { UserService } from '../../core/services/user.service';
+import { RoleService } from '../../core/services/role.service';
 import { LoaderService } from '../../core/services/loader.service';
+import { PermissionService } from '../../core/services/permission.service';
+import { CacheService } from '../../core/services/cache.service';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-users',
@@ -11,24 +15,40 @@ import { LoaderService } from '../../core/services/loader.service';
   templateUrl: './users.html',
   styleUrl: './users.css'
 })
-
 export class Users implements OnInit {
+
   users: any[] = [];
   roles: any[] = [];
+
   showModal = false;
   isEditMode = false;
   isViewMode = false;
   selectedUserId: string | null = null;
-  form!: FormGroup;
 
-  constructor(private supabase: SupabaseService, private loader: LoaderService, private fb: FormBuilder) { }
+  form!: FormGroup;
+  userMenuId = 6;
+
+  constructor(
+    private userService: UserService,
+    private roleService: RoleService,
+    private permission: PermissionService,
+    private cache: CacheService,
+    private loader: LoaderService,
+    private fb: FormBuilder
+  ) { }
 
   ngOnInit() {
     this.initForm();
-    this.loadRoles();
-    this.loadUsers();
+    this.loadInitialData();
   }
 
+  can(action: string) {
+    return this.permission.has(this.userMenuId, action);
+  }
+
+  // =========================
+  // FORM
+  // =========================
   initForm() {
     this.form = this.fb.group({
       full_name: ['', Validators.required],
@@ -38,86 +58,105 @@ export class Users implements OnInit {
     });
   }
 
-  async loadRoles() {
-    this.loader.show();
-    try {
-      const { data, error } = await this.supabase.client
-        .from('role')
-        .select('*')
-        .eq('status', true)
-        .order('role_name');
+  // =========================
+  // LOAD INITIAL (CACHE FIRST)
+  // =========================
+  async loadInitialData() {
 
-      if (error) throw error;
-      this.roles = data || [];
+    this.loader.show();
+
+    try {
+
+      // -------------------------
+      // USERS (CACHE FIRST)
+      // -------------------------
+      const cachedUsers = this.cache.get<any[]>('users');
+
+      if (cachedUsers) {
+        this.users = cachedUsers;
+      } else {
+        this.users = await this.userService.getUsers();
+        this.cache.set('users', this.users);
+      }
+
+      // -------------------------
+      // ROLES (CACHE FIRST)
+      // -------------------------
+      const cachedRoles = this.cache.get<any[]>('roles');
+
+      if (cachedRoles) {
+        this.roles = cachedRoles;
+      } else {
+        this.roles = await this.roleService.getAll();
+        this.cache.set('roles', this.roles);
+      }
+
     } catch (err) {
-      console.error('LOAD ROLES ERROR:', err);
+      console.error('INIT LOAD ERROR:', err);
     } finally {
       this.loader.hide();
     }
   }
 
+  // =========================
+  // REFRESH USERS ONLY
+  // =========================
   async loadUsers() {
-    this.loader.show();
-    try {
-      const { data, error } = await this.supabase.client
-        .from('profiles')
-        .select(`
-          id,
-          full_name,
-          email,
-          is_active,
-          role_id,
-          role:role_id(role_name)
-        `)
-        .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      this.users = data || [];
-    } catch (err) {
-      console.error('LOAD USERS ERROR:', err);
+    this.loader.show();
+
+    try {
+      this.users = await this.userService.getUsers();
+      this.cache.set('users', this.users);
+
+    } catch (err: any) {
+      Swal.fire('Error', err.message || 'Failed to load users', 'error');
     } finally {
       this.loader.hide();
     }
   }
 
+  // =========================
+  // CREATE
+  // =========================
   openCreateModal() {
     this.isEditMode = false;
     this.isViewMode = false;
     this.selectedUserId = null;
+
     this.form.reset({
       full_name: '',
       email: '',
       role_id: null,
       is_active: true
     });
+
     this.form.enable();
     this.showModal = true;
   }
 
+  // =========================
+  // EDIT
+  // =========================
   openEditModal(user: any) {
     this.isEditMode = true;
     this.isViewMode = false;
     this.selectedUserId = user.id;
-    this.form.patchValue({
-      full_name: user.full_name,
-      email: user.email,
-      role_id: user.role_id,
-      is_active: user.is_active
-    });
+
+    this.form.patchValue(user);
     this.form.enable();
     this.showModal = true;
   }
 
+  // =========================
+  // VIEW
+  // =========================
   openViewModal(user: any) {
     this.isViewMode = true;
     this.isEditMode = false;
     this.selectedUserId = user.id;
-    this.form.patchValue({
-      full_name: user.full_name,
-      email: user.email,
-      role_id: user.role_id,
-      is_active: user.is_active
-    });
+
+    this.form.patchValue(user);
     this.form.disable();
     this.showModal = true;
   }
@@ -126,37 +165,35 @@ export class Users implements OnInit {
     this.showModal = false;
   }
 
+  // =========================
+  // SAVE (CACHE UPDATE)
+  // =========================
   async saveUser() {
-    if (this.form.invalid) return;
-    this.loader.show();
-    try {
-      const value = this.form.getRawValue();
-      if (this.isEditMode && this.selectedUserId) {
-        const { error } = await this.supabase.client
-          .from('profiles')
-          .update({
-            full_name: value.full_name,
-            role_id: value.role_id,
-            is_active: value.is_active
-          })
-          .eq('id', this.selectedUserId);
 
-        if (error) throw error;
+    if (this.form.invalid) return;
+
+    this.loader.show();
+
+    try {
+
+      const value = this.form.getRawValue();
+
+      if (this.isEditMode && this.selectedUserId) {
+
+        await this.userService.updateUser(this.selectedUserId, value);
+
       } else {
-        const { error } = await this.supabase.client
-          .from('profiles')
-          .insert({
-            full_name: value.full_name,
-            email: value.email,
-            role_id: value.role_id,
-            is_active: value.is_active
-          });
-        if (error) {
-          console.warn('Insert warning (maybe trigger handles profile creation):', error);
-        }
+
+        await this.userService.createUser(value);
       }
-      await this.loadUsers();
+
+      // 🔥 refresh + cache sync
+      const users = await this.userService.getUsers();
+      this.users = users;
+      this.cache.set('users', users);
+
       this.closeModal();
+
     } catch (err) {
       console.error('SAVE ERROR:', err);
     } finally {
@@ -164,17 +201,24 @@ export class Users implements OnInit {
     }
   }
 
+  // =========================
+  // DELETE (CACHE UPDATE)
+  // =========================
   async deleteUser(id: string) {
-    if (!confirm('Delete this user?')) return;
-    this.loader.show();
-    try {
-      const { error } = await this.supabase.client
-        .from('profiles')
-        .delete()
-        .eq('id', id);
 
-      if (error) throw error;
-      await this.loadUsers();
+    if (!confirm('Delete this user?')) return;
+
+    this.loader.show();
+
+    try {
+
+      await this.userService.deleteUser(id);
+
+      const users = this.users.filter(u => u.id !== id);
+
+      this.users = users;
+      this.cache.set('users', users);
+
     } catch (err) {
       console.error('DELETE ERROR:', err);
     } finally {
@@ -182,16 +226,24 @@ export class Users implements OnInit {
     }
   }
 
+  // =========================
+  // TOGGLE STATUS
+  // =========================
   async toggleStatus(user: any) {
-    this.loader.show();
-    try {
-      const { error } = await this.supabase.client
-        .from('profiles')
-        .update({ is_active: !user.is_active })
-        .eq('id', user.id);
 
-      if (error) throw error;
-      await this.loadUsers();
+    this.loader.show();
+
+    try {
+
+      await this.userService.toggleUserStatus(user.id, !user.is_active);
+
+      const updated = this.users.map(u =>
+        u.id === user.id ? { ...u, is_active: !u.is_active } : u
+      );
+
+      this.users = updated;
+      this.cache.set('users', updated);
+
     } catch (err) {
       console.error('STATUS ERROR:', err);
     } finally {

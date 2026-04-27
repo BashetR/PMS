@@ -1,91 +1,143 @@
-import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
-import { environment } from '../../../environments/environment';
 import { SupabaseService } from './supabase.service';
+import { AppInitService } from './app-init.service';
+import { IdleService } from './idle.service';
 
 @Injectable({
   providedIn: 'root',
 })
-
 export class Auth {
-  private baseUrl = environment.supabaseUrl;
-  private accountUrl = this.baseUrl +  'Account/';
 
-  constructor(private http: HttpClient, private router: Router, private supabaseService: SupabaseService) {}
-  
-  get<T>(url:string){
-    return this.http.get<any>(url);
+  private isInitialized = false;
+
+  constructor(
+    private router: Router,
+    private supabase: SupabaseService,
+    private appInit: AppInitService,
+    private idleService: IdleService
+  ) {
+    this.initAuthListener();
   }
 
-  post<T>(url:any, model:any){
-    return this.http.post(url, model);
-  }
+  // =========================
+  // SESSION RESTORE HANDLER
+  // =========================
+  private initAuthListener() {
+    this.supabase.client.auth.onAuthStateChange(async (event, session) => {
 
-  // Authentication API call Start
-  async isLoggedIn(): Promise<boolean> {
-    const { data } = await this.supabaseService.client.auth.getSession();
-    return !!data.session;
-  }
+      if (event === 'SIGNED_IN' && session?.user) {
+        await this.bootstrapApp();
+      }
 
-  async register(data: any) {
-    const { data: result, error } = await this.supabaseService.client.auth.signUp({
-      email: data.Email,
-      password: data.Password,
-      options: {
-        data: {
-          username: data.UserName
-        }
+      if (event === 'SIGNED_OUT') {
+        this.clearAppState();
       }
     });
-
-    if (error) throw error;
-    // Create profile row manually
-    if (result.user) {
-      await this.supabaseService.client.from('profiles').insert({
-        id: result.user.id,
-        username: data.UserName,
-        role: 'user'
-      });
-    }
-    return result;
   }
 
-  async login(data: any) {
-    const { data: result, error } = await this.supabaseService.client.auth.signInWithPassword({
-      email: data.Email,
-      password: data.Password
-    });
+  // =========================
+  // SAFE APP BOOTSTRAP
+  // =========================
+  private async bootstrapApp() {
+    if (this.isInitialized) return;
 
-    if (error) throw error;
-    return result;
-  }
-
-  async logout() {
-    await this.supabaseService.client.auth.signOut();
-    this.router.navigate(['/login']);
+    this.isInitialized = true;
+    await this.appInit.loadInitialData();
   }
 
   async getUser() {
-    const { data } = await this.supabaseService.client.auth.getUser();
-    return data.user;
+    const user = await this.supabase.getUser();
+    return user;
   }
 
-  confirm_registration(useridparam: any, codeparam: any) {
-    return this.get(this.accountUrl + 'confirmemail?userId=' + useridparam + '&code=' + codeparam);
+  // =========================
+  // LOGIN
+  // =========================
+  async login(payload: { Email: string; Password: string }) {
+
+    const { data, error } =
+      await this.supabase.client.auth.signInWithPassword({
+        email: payload.Email,
+        password: payload.Password,
+      });
+
+    if (error) throw error;
+
+    // IMPORTANT: AppInit will be triggered by auth listener
+    this.router.navigate(['/dashboard']);
+
+    return data;
   }
 
+  // =========================
+  // REGISTER
+  // =========================
+  async register(payload: {
+    email: string;
+    password: string;
+    username: string;
+  }) {
+
+    const { data, error } =
+      await this.supabase.client.auth.signUp({
+        email: payload.email,
+        password: payload.password,
+        options: {
+          data: {
+            username: payload.username,
+          },
+        },
+      });
+
+    if (error) throw error;
+
+    if (data.user) {
+      await this.supabase.client.from('profiles').insert({
+        id: data.user.id,
+        username: payload.username,
+        email: payload.email,
+        role: 'User',
+        role_id: 4
+      });
+    }
+
+    return data;
+  }
+
+  // =========================
+  // LOGOUT
+  // =========================
+  async logout() {
+    this.idleService.stopWatching();
+    await this.supabase.signOut();
+    this.clearAppState();
+    this.router.navigate(['/login']);
+  }
+
+  // =========================
+  // FORGOT PASSWORD
+  // =========================
   async forgotPassword(email: string) {
-    const { error } = await this.supabaseService.client.auth.resetPasswordForEmail(email);
+    const { error } =
+      await this.supabase.client.auth.resetPasswordForEmail(email);
+
     if (error) throw error;
   }
 
-  resetPassword(model: any) {
-    return this.post(this.accountUrl + 'resetpassword', model);
+  // =========================
+  // CLEAR CACHE + STATE
+  // =========================
+  private clearAppState() {
+    this.isInitialized = false;
+    // optionally clear cache here
   }
 
-  associateRegister(model: any) {
-    return this.http.post<any>(this.accountUrl + 'associate', model);
+  async updatePassword(newPassword: string) {
+    const { error } = await this.supabase.client.auth.updateUser({
+      password: newPassword
+    });
+
+    if (error) throw error;
   }
-  // Authentication API call End
 }

@@ -16,59 +16,72 @@ import { LoaderService } from '../../../core/services/loader.service';
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
   styleUrl: './login.css',
 })
-
 export class Login implements OnInit, OnDestroy {
+
   loginForm!: FormGroup;
   appLogo: any;
   copyright: any;
 
-  constructor(private authService: Auth, private fb: FormBuilder, private titleService: TitleService, private formValidator: FormValidationService, private route: ActivatedRoute, private router: Router, private loader: LoaderService) { }
+  constructor(
+    private authService: Auth,
+    private fb: FormBuilder,
+    private titleService: TitleService,
+    private formValidator: FormValidationService,
+    private route: ActivatedRoute,
+    private router: Router,
+    private loader: LoaderService
+  ) { }
 
   ngOnInit() {
-    this.CreateLoginForm();
+    this.createLoginForm();
     this.titleService.setTitle('Login');
-    const body = document.getElementsByTagName('body')[0];
-    body.classList.add('login-page');
+
+    document.body.classList.add('login-page');
+
     this.appLogo = environment.logo;
     this.copyright = environment.copyright;
   }
 
   ngOnDestroy() {
-    const body = document.getElementsByTagName('body')[0];
-    body.classList.remove('login-page');
+    document.body.classList.remove('login-page');
   }
 
-  CreateLoginForm() {
+  createLoginForm() {
     this.loginForm = this.fb.group({
       Email: ['', [Validators.required, Validators.email]],
       Password: ['', [Validators.required]],
     });
   }
 
+  // =========================
+  // LOGIN (FIXED FLOW)
+  // =========================
   async login() {
+
     if (this.loginForm.invalid) {
       this.formValidator.validateAllFormFields(this.loginForm);
       return;
     }
+
     this.loader.show();
+
     try {
-      const res = await this.authService.login(this.loginForm.value);
-      if (!res.session) {
-        Swal.fire({
-          title: 'Email not verified',
-          text: 'Please verify your email before logging in.',
-          icon: 'warning'
-        });
-        return;
-      }
-      const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/dashboard';
+
+      await this.authService.login(this.loginForm.value);
+
+      const returnUrl =
+        this.route.snapshot.queryParamMap.get('returnUrl') || '/dashboard';
+
       this.router.navigateByUrl(returnUrl);
+
     } catch (error: any) {
+
       Swal.fire({
         title: 'Login Failed',
         text: error.message || 'Invalid email or password',
         icon: 'error'
       });
+
     } finally {
       this.loader.hide();
     }
