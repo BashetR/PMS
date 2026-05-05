@@ -1,0 +1,18 @@
+<div class="text-center mb-4">
+    <h4 class="fw-bold">Verify your account</h4>
+    <p class="text-muted">Enter the 6-digit code sent to your email</p>
+</div>
+
+<form (ngSubmit)="verifyOtp()">
+    <div class="d-flex justify-content-center gap-2 mb-4">
+        <input *ngFor="let box of otpBoxes; let i = index" class="form-control text-center otp-box" maxlength="1"
+            type="text" inputmode="numeric" [(ngModel)]="otp[i]" name="otp{{i}}" (input)="onInput($event, i)"
+            (keydown)="onKeyDown($event, i)" />
+    </div>
+    <button class="btn btn-primary w-100" [disabled]="!isOtpComplete()">Verify OTP</button>
+</form>
+
+<div class="text-center mt-3">
+    <button class="btn btn-link p-0" (click)="resendOtp()" [disabled]="timer > 0">Resend OTP</button>
+    <div class="text-muted small mt-1" *ngIf="timer > 0">Resend in {{ timer }}s</div>
+</div>

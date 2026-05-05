@@ -2,13 +2,11 @@ import { Injectable } from '@angular/core';
 import { createClient, Session, SupabaseClient, User } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
 
+@Injectable({ providedIn: 'root' })
 
-@Injectable({
-    providedIn: 'root'
-})
 export class SupabaseService {
-
     private supabase: SupabaseClient;
+    private channels: any[] = [];
 
     constructor() {
         this.supabase = createClient(
@@ -17,16 +15,10 @@ export class SupabaseService {
         );
     }
 
-    // =========================
-    // CORE CLIENT
-    // =========================
     get client(): SupabaseClient {
         return this.supabase;
     }
 
-    // =========================
-    // AUTH
-    // =========================
     async getSession(): Promise<Session | null> {
         const { data, error } = await this.supabase.auth.getSession();
         if (error) {
@@ -60,9 +52,6 @@ export class SupabaseService {
         return !!session;
     }
 
-    // =========================
-    // CLEAN DATABASE ACCESS
-    // =========================
     select(table: string, query = '*') {
         return this.supabase.from(table).select(query);
     }
@@ -79,34 +68,18 @@ export class SupabaseService {
         return this.supabase.from(table).delete().match(match);
     }
 
-    // =========================
-    // REALTIME (TRACK CHANNELS)
-    // =========================
-    private channels: any[] = [];
-
     listen(table: string, callback: (payload: any) => void) {
-        const channel = this.supabase
-            .channel(`${table}-changes`)
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table },
-                (payload) => callback(payload)
-            )
-            .subscribe();
+        const channel = this.supabase.channel(`${table}-changes`)
+            .on('postgres_changes', { event: '*', schema: 'public', table }, (payload) => callback(payload)).subscribe();
 
         this.channels.push(channel);
-
         return channel;
     }
 
-    // =========================
-    // CLEANUP REALTIME
-    // =========================
     removeAllListeners() {
         this.channels.forEach(channel => {
             this.supabase.removeChannel(channel);
         });
-
         this.channels = [];
     }
 }
