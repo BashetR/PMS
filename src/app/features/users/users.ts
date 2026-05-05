@@ -1,49 +1,53 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { UserService } from '../../core/services/user.service';
-import { RoleService } from '../../core/services/role.service';
-import { LoaderService } from '../../core/services/loader.service';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { UserCrudService } from '../../core/services/crud/user-crud.service';
 import { PermissionService } from '../../core/services/permission.service';
-import { CacheService } from '../../core/services/cache.service';
+import { DataTable } from '../../shared/components/data-table/data-table';
+import { FormModal } from '../../shared/components/form-modal/form-modal';
+import { RoleCrudService } from '../../core/services/crud/role-crud.service';
 import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-users',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, DataTable, FormModal],
   templateUrl: './users.html',
-  styleUrl: './users.css'
 })
-export class Users implements OnInit {
 
+export class Users implements OnInit {
   users: any[] = [];
   roles: any[] = [];
-
-  showModal = false;
-  isEditMode = false;
-  isViewMode = false;
-  selectedUserId: string | null = null;
-
   form!: FormGroup;
-  userMenuId = 6;
+  mode: 'create' | 'edit' | 'view' = 'create';
+  selectedId: string | null = null;
+  activeTab: 'active' | 'inactive' = 'active';
+  page = 1;
+  pageSize = 5;
+  modalVisible = false;
+  userMenuId!: number;
+  columns: any[] = [];
 
-  constructor(
-    private userService: UserService,
-    private roleService: RoleService,
-    private permission: PermissionService,
-    private cache: CacheService,
-    private loader: LoaderService,
-    private fb: FormBuilder
-  ) { }
-
-  ngOnInit() {
+  constructor(private crud: UserCrudService, private roleCrud: RoleCrudService, private permission: PermissionService, private fb: FormBuilder) {
     this.initForm();
-    this.loadInitialData();
+    this.initTable();
   }
 
+  ngOnInit() {
+    this.userMenuId = this.permission.getCurrentMenuId();
+    this.load();
+  }
+
+  // =========================
+  // PERMISSION
+  // =========================
   can(action: string) {
     return this.permission.has(this.userMenuId, action);
+  }
+
+  canSave() {
+    return this.mode !== 'view' &&
+      this.can(this.mode === 'edit' ? 'edit' : 'create');
   }
 
   // =========================
@@ -59,70 +63,82 @@ export class Users implements OnInit {
   }
 
   // =========================
-  // LOAD INITIAL (CACHE FIRST)
+  // TABLE CONFIG
   // =========================
-  async loadInitialData() {
-
-    this.loader.show();
-
-    try {
-
-      // -------------------------
-      // USERS (CACHE FIRST)
-      // -------------------------
-      const cachedUsers = this.cache.get<any[]>('users');
-
-      if (cachedUsers) {
-        this.users = cachedUsers;
-      } else {
-        this.users = await this.userService.getUsers();
-        this.cache.set('users', this.users);
+  initTable() {
+    this.columns = [
+      { key: 'full_name', label: 'Name' },
+      { key: 'email', label: 'Email' },
+      { key: 'role_name', label: 'Role' },
+      { key: 'is_active', label: 'Status', type: 'status' },
+      { key: 'created_at', label: 'Created', type: 'date' },
+      {
+        type: 'actions',
+        actions: [
+          { name: 'view', icon: 'fas fa-eye', class: 'btn-info', show: () => this.can('view') },
+          { name: 'edit', icon: 'fas fa-edit', class: 'btn-warning', show: () => this.can('edit') },
+          { name: 'delete', icon: 'fas fa-trash', class: 'btn-danger', show: () => this.can('delete') }
+        ]
       }
-
-      // -------------------------
-      // ROLES (CACHE FIRST)
-      // -------------------------
-      const cachedRoles = this.cache.get<any[]>('roles');
-
-      if (cachedRoles) {
-        this.roles = cachedRoles;
-      } else {
-        this.roles = await this.roleService.getAll();
-        this.cache.set('roles', this.roles);
-      }
-
-    } catch (err) {
-      console.error('INIT LOAD ERROR:', err);
-    } finally {
-      this.loader.hide();
-    }
+    ];
   }
 
   // =========================
-  // REFRESH USERS ONLY
+  // LOAD
   // =========================
-  async loadUsers() {
-
-    this.loader.show();
-
-    try {
-      this.users = await this.userService.getUsers();
-      this.cache.set('users', this.users);
-
-    } catch (err: any) {
-      Swal.fire('Error', err.message || 'Failed to load users', 'error');
-    } finally {
-      this.loader.hide();
-    }
+  async load() {
+    this.users = await this.crud.getAll({
+      select: 'id,full_name,email,role:role_id(role_name),is_active,created_at',
+      page: 1,
+      pageSize: 10
+    });
+    this.roles = await this.roleCrud.getAll();
   }
 
   // =========================
-  // CREATE
+  // FILTER + PAGINATION
   // =========================
-  openCreateModal() {
-    this.isEditMode = false;
-    this.isViewMode = false;
-    this.selectedUserId = null;
+  get filtered() {
+    return this.users.filter(u =>
+      this.activeTab === 'active' ? u.is_active : !u.is_active
+    );
+  }
+
+  get paginated() {
+    const start = (this.page - 1) * this.pageSize;
+    return this.filtered.slice(start, start + this.pageSize);
+  }
+
+  get totalPages() {
+    return Math.ceil(this.filtered.length / this.pageSize);
+  }
+
+  get totalPagesArray() {
+    return Array(this.totalPages).fill(0).map((_, i) => i + 1);
+  }
+
+  changeTab(tab: 'active' | 'inactive') {
+    this.activeTab = tab;
+    this.page = 1;
+  }
+
+  // =========================
+  // ACTION HANDLER
+  // =========================
+  handleAction(e: any) {
+    const { action, row } = e;
+
+    if (action === 'view') this.openView(row);
+    if (action === 'edit') this.openEdit(row);
+    if (action === 'delete') this.delete(row.id);
+  }
+
+  // =========================
+  // MODAL
+  // =========================
+  openCreate() {
+    this.mode = 'create';
+    this.selectedId = null;
 
     this.form.reset({
       full_name: '',
@@ -132,122 +148,66 @@ export class Users implements OnInit {
     });
 
     this.form.enable();
-    this.showModal = true;
+    this.modalVisible = true;
   }
 
-  // =========================
-  // EDIT
-  // =========================
-  openEditModal(user: any) {
-    this.isEditMode = true;
-    this.isViewMode = false;
-    this.selectedUserId = user.id;
+  openEdit(user: any) {
+    this.mode = 'edit';
+    this.selectedId = user.id;
 
     this.form.patchValue(user);
     this.form.enable();
-    this.showModal = true;
+
+    this.modalVisible = true;
   }
 
-  // =========================
-  // VIEW
-  // =========================
-  openViewModal(user: any) {
-    this.isViewMode = true;
-    this.isEditMode = false;
-    this.selectedUserId = user.id;
+  openView(user: any) {
+    this.mode = 'view';
+    this.selectedId = user.id;
 
     this.form.patchValue(user);
     this.form.disable();
-    this.showModal = true;
+
+    this.modalVisible = true;
   }
 
   closeModal() {
-    this.showModal = false;
+    this.modalVisible = false;
   }
 
   // =========================
-  // SAVE (CACHE UPDATE)
+  // SAVE
   // =========================
-  async saveUser() {
+  async save() {
 
     if (this.form.invalid) return;
 
-    this.loader.show();
+    const value = this.form.getRawValue();
 
-    try {
-
-      const value = this.form.getRawValue();
-
-      if (this.isEditMode && this.selectedUserId) {
-
-        await this.userService.updateUser(this.selectedUserId, value);
-
-      } else {
-
-        await this.userService.createUser(value);
-      }
-
-      // 🔥 refresh + cache sync
-      const users = await this.userService.getUsers();
-      this.users = users;
-      this.cache.set('users', users);
-
-      this.closeModal();
-
-    } catch (err) {
-      console.error('SAVE ERROR:', err);
-    } finally {
-      this.loader.hide();
+    if (this.mode === 'edit' && this.selectedId) {
+      await this.crud.update(this.selectedId, value);
+    } else {
+      await this.crud.create(value);
     }
+
+    await this.load();
+    this.closeModal();
   }
 
   // =========================
-  // DELETE (CACHE UPDATE)
+  // DELETE
   // =========================
-  async deleteUser(id: string) {
+  async delete(id: string) {
+    const confirm = await Swal.fire({
+      title: 'Delete role?',
+      text: 'This cannot be undone!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes delete'
+    });
 
-    if (!confirm('Delete this user?')) return;
-
-    this.loader.show();
-
-    try {
-
-      await this.userService.deleteUser(id);
-
-      const users = this.users.filter(u => u.id !== id);
-
-      this.users = users;
-      this.cache.set('users', users);
-
-    } catch (err) {
-      console.error('DELETE ERROR:', err);
-    } finally {
-      this.loader.hide();
-    }
-  }
-
-  // =========================
-  // TOGGLE STATUS
-  // =========================
-  async toggleStatus(user: any) {
-
-    this.loader.show();
-
-    try {
-
-      await this.userService.toggleUserStatus(user.id, !user.is_active);
-
-      const updated = this.users.map(u =>
-        u.id === user.id ? { ...u, is_active: !u.is_active } : u
-      );
-
-      this.users = updated;
-      this.cache.set('users', updated);
-
-    } catch (err) {
-      console.error('STATUS ERROR:', err);
-    } finally {
-      this.loader.hide();
-    }
+    if (!confirm.isConfirmed) return;
+    await this.crud.delete(id);
+    await this.load();
   }
 }

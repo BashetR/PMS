@@ -1,0 +1,21 @@
+<div class="modal fade" [class.show]="visible" [style.display]="visible ? 'block' : 'none'" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ title }}</h5>
+                <button type="button" class="btn-close" (click)="onClose()"></button>
+            </div>
+
+            <div class="modal-body">
+                <ng-content></ng-content>
+            </div>
+
+            <div class="modal-footer">
+                <button *ngIf="canSave" class="btn btn-primary" (click)="submit()">Save</button>
+                <button class="btn btn-secondary" (click)="onClose()">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop fade" [class.show]="visible" *ngIf="visible"></div>

@@ -1,58 +1,84 @@
-import { Component, OnInit, AfterViewInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-
-import Swal from 'sweetalert2';
-
-import { RoleService } from '../../core/services/role.service';
-import { LoaderService } from '../../core/services/loader.service';
 import { PermissionService } from '../../core/services/permission.service';
-import { CacheService } from '../../core/services/cache.service';
-import { Router } from '@angular/router';
-
-declare var bootstrap: any;
+import { DataTable } from '../../shared/components/data-table/data-table';
+import { FormModal } from '../../shared/components/form-modal/form-modal';
+import { RoleCrudService } from '../../core/services/crud/role-crud.service';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-roles',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, DataTable, FormModal],
   templateUrl: './roles.html',
-  styleUrl: './roles.css',
 })
-export class Roles implements OnInit, AfterViewInit {
+export class Roles implements OnInit {
 
   roles: any[] = [];
+
   activeTab: 'active' | 'inactive' = 'active';
 
   form!: FormGroup;
-  isEditMode = false;
-  isViewMode = false;
-  selectedRoleId: string | null = null;
 
-  private modalInstance: any;
+  mode: 'create' | 'edit' | 'view' = 'create';
+  selectedId: number | null = null;
 
-  userMenuId = 7;
+  page = 1;
+  pageSize = 5;
+
+  modalVisible = false;
+
+  userMenuId!: number;
+
+  // ✅ DataTable columns
+  columns = [
+    { key: 'role_name', label: 'Role' },
+    { key: 'description', label: 'Description' },
+    { key: 'status', label: 'Status', type: 'status' },
+    { key: 'created_at', label: 'Created', type: 'date' },
+    {
+      type: 'actions',
+      actions: [
+        {
+          name: 'permissions',
+          icon: 'fas fa-key',
+          class: 'btn-primary',
+          show: () => this.can('assign')
+        },
+        {
+          name: 'view',
+          icon: 'fas fa-eye',
+          class: 'btn-info',
+          show: () => this.can('view')
+        },
+        {
+          name: 'edit',
+          icon: 'fas fa-edit',
+          class: 'btn-warning',
+          show: () => this.can('edit')
+        },
+        {
+          name: 'delete',
+          icon: 'fas fa-trash',
+          class: 'btn-danger',
+          show: () => this.can('delete')
+        }
+      ]
+    }
+  ];
 
   constructor(
-    private roleService: RoleService,
-    private cache: CacheService,
+    private crud: RoleCrudService,
     private permission: PermissionService,
-    private loader: LoaderService,
-    private fb: FormBuilder,
-    private router: Router
+    private fb: FormBuilder
   ) {
     this.initForm();
   }
 
   ngOnInit() {
-    this.loadRoles();
-  }
-
-  ngAfterViewInit() {
-    const modalEl = document.getElementById('roleModal');
-    if (modalEl) {
-      this.modalInstance = new bootstrap.Modal(modalEl);
-    }
+    this.userMenuId = this.permission.getCurrentMenuId();
+    this.load();
   }
 
   // =========================
@@ -60,6 +86,10 @@ export class Roles implements OnInit, AfterViewInit {
   // =========================
   can(action: string) {
     return this.permission.has(this.userMenuId, action);
+  }
+
+  canSave() {
+    return this.mode !== 'view' && this.can(this.mode === 'edit' ? 'edit' : 'create');
   }
 
   // =========================
@@ -74,132 +104,130 @@ export class Roles implements OnInit, AfterViewInit {
   }
 
   // =========================
-  // LOAD ROLES (CACHE FIRST)
+  // LOAD
   // =========================
-  async loadRoles() {
-
-    this.loader.show();
-
-    try {
-
-      const cached = this.cache.get<any[]>('roles');
-
-      if (cached && cached.length) {
-        this.roles = cached;
-      } else {
-        this.roles = await this.roleService.getAll();
-        this.cache.set('roles', this.roles);
-      }
-
-    } catch (err: any) {
-      Swal.fire('Error', err.message || 'Failed to load roles', 'error');
-    } finally {
-      this.loader.hide();
-    }
+  async load() {
+    this.roles = await this.crud.getAll({
+      select: 'id,role_name,description,status,created_at',
+      page: 1,
+      pageSize: 10
+    });
+    this.page = 1;
   }
 
   // =========================
   // FILTER
   // =========================
-  get filteredRoles() {
+  get filtered() {
     return this.roles.filter(r =>
       this.activeTab === 'active' ? r.status : !r.status
     );
   }
 
+  // =========================
+  // PAGINATION
+  // =========================
+  get paginated() {
+    const start = (this.page - 1) * this.pageSize;
+    return this.filtered.slice(start, start + this.pageSize);
+  }
+
+  get totalPages() {
+    return Math.ceil(this.filtered.length / this.pageSize);
+  }
+
+  get totalPagesArray() {
+    return Array(this.totalPages).fill(0).map((_, i) => i + 1);
+  }
+
+  nextPage() {
+    if (this.page < this.totalPages) this.page++;
+  }
+
+  prevPage() {
+    if (this.page > 1) this.page--;
+  }
+
+  goToPage(p: number) {
+    this.page = p;
+  }
+
   changeTab(tab: 'active' | 'inactive') {
     this.activeTab = tab;
+    this.page = 1;
   }
 
   // =========================
-  // CREATE
+  // ACTION HANDLER
   // =========================
-  openCreateModal() {
-    this.isEditMode = false;
-    this.isViewMode = false;
-    this.selectedRoleId = null;
+  handleAction(e: any) {
+    const { action, row } = e;
+    if (action === 'permissions') this.openPermissions(row);
+    if (action === 'view') this.openView(row);
+    if (action === 'edit') this.openEdit(row);
+    if (action === 'delete') this.delete(row.id);
+  }
 
-    this.form.reset({
-      role_name: '',
-      description: '',
-      status: true
-    });
+  // =========================
+  // MODAL
+  // =========================
+  openCreate() {
+    this.mode = 'create';
+    this.selectedId = null;
 
+    this.form.reset({ role_name: '', description: '', status: true });
     this.form.enable();
-    this.modalInstance.show();
+
+    this.modalVisible = true;
   }
 
-  // =========================
-  // EDIT
-  // =========================
   openEdit(role: any) {
-    this.isEditMode = true;
-    this.isViewMode = false;
-    this.selectedRoleId = role.id;
+    this.mode = 'edit';
+    this.selectedId = role.id;
 
     this.form.patchValue(role);
     this.form.enable();
 
-    this.modalInstance.show();
+    this.modalVisible = true;
   }
 
-  // =========================
-  // VIEW
-  // =========================
-  openViewModal(role: any) {
-    this.isViewMode = true;
-    this.isEditMode = false;
-    this.selectedRoleId = role.id;
+  openView(role: any) {
+    this.mode = 'view';
+    this.selectedId = role.id;
 
     this.form.patchValue(role);
     this.form.disable();
 
-    this.modalInstance.show();
+    this.modalVisible = true;
+  }
+
+  closeModal() {
+    this.modalVisible = false;
   }
 
   // =========================
-  // SAVE (CACHE SYNC)
+  // SAVE
   // =========================
   async save() {
 
     if (this.form.invalid) return;
 
-    this.loader.show();
+    const value = this.form.getRawValue();
 
-    try {
-
-      const value = this.form.value;
-
-      if (this.isEditMode && this.selectedRoleId) {
-
-        await this.roleService.update(this.selectedRoleId, value);
-
-      } else {
-
-        await this.roleService.create(value);
-      }
-
-      // 🔥 refresh cache
-      const roles = await this.roleService.getAll();
-      this.roles = roles;
-      this.cache.set('roles', roles);
-
-      Swal.fire('Success', 'Saved successfully', 'success');
-
-      this.modalInstance.hide();
-
-    } catch (err: any) {
-      Swal.fire('Error', err.message || 'Save failed', 'error');
-    } finally {
-      this.loader.hide();
+    if (this.mode === 'edit' && this.selectedId) {
+      await this.crud.update(this.selectedId, value);
+    } else {
+      await this.crud.create(value);
     }
+
+    await this.load();
+    this.closeModal();
   }
 
   // =========================
-  // DELETE (CACHE UPDATE)
+  // DELETE
   // =========================
-  async deleteRole(id: string) {
-
+  async delete(id: number) {
     const confirm = await Swal.fire({
       title: 'Delete role?',
       text: 'This cannot be undone!',
@@ -209,29 +237,12 @@ export class Roles implements OnInit, AfterViewInit {
     });
 
     if (!confirm.isConfirmed) return;
-
-    this.loader.show();
-
-    try {
-
-      await this.roleService.delete(id);
-
-      const roles = this.roles.filter(r => r.id !== id);
-
-      this.roles = roles;
-      this.cache.set('roles', roles);
-
-      Swal.fire('Deleted', 'Role removed', 'success');
-
-    } catch (err: any) {
-      Swal.fire('Error', err.message || 'Delete failed', 'error');
-    } finally {
-      this.loader.hide();
-    }
+    await this.crud.delete(id);
+    await this.load();
   }
 
   openPermissions(role: any) {
     if (!role?.id) return;
-    this.router.navigate(['/admin/role-permissions', role.id]);
+    window.location.href = `/admin/role-permissions/${role.id}`;
   }
 }
