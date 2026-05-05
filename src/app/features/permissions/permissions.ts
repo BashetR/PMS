@@ -1,66 +1,80 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, AfterViewInit } from '@angular/core';
-import { Validators, FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { Component, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 
-import Swal from 'sweetalert2';
-
-import { LoaderService } from '../../core/services/loader.service';
 import { PermissionService } from '../../core/services/permission.service';
+import { PermissionCrudService } from '../../core/services/crud/permission-crud.service';
 
-declare var bootstrap: any;
+import { DataTable } from "../../shared/components/data-table/data-table";
+import { FormModal } from '../../shared/components/form-modal/form-modal';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-permissions',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, DataTable, FormModal],
   templateUrl: './permissions.html',
-  styleUrl: './permissions.css',
 })
-export class Permissions implements OnInit, AfterViewInit {
+export class Permissions implements OnInit {
 
   permissions: any[] = [];
-  activeTab = 'active';
 
   form!: FormGroup;
-  isEditMode = false;
-  isViewMode = false;
-  selectedPermissionId: string | null = null;
+
+  mode: 'create' | 'edit' | 'view' = 'create';
+  selectedId: string | null = null;
+
+  activeTab: 'active' | 'inactive' = 'active';
 
   page = 1;
   pageSize = 5;
 
-  private modalInstance: any;
+  userMenuId!: number;
 
-  userMenuId = 8; // ✅ Permissions menu id
+  // ✅ MODAL CONTROL (FIXED)
+  isModalOpen = false;
+
+  columns = [
+    { key: 'name', label: 'Name' },
+    { key: 'description', label: 'Description' },
+    { key: 'is_active', label: 'Status', type: 'status' },
+    { key: 'created_at', label: 'Created', type: 'date' },
+    {
+      type: 'actions',
+      actions: [
+        { name: 'view', icon: 'fas fa-eye', class: 'btn-info', show: () => this.can('view') },
+        { name: 'edit', icon: 'fas fa-edit', class: 'btn-warning', show: () => this.can('edit') },
+        { name: 'delete', icon: 'fas fa-trash', class: 'btn-danger', show: () => this.can('delete') }
+      ]
+    }
+  ];
 
   constructor(
-    private permissionService: PermissionService, // ✅ USE SERVICE
-    private permission: PermissionService,        // for RBAC check
-    private loader: LoaderService,
+    private crud: PermissionCrudService,
+    private permission: PermissionService,
     private fb: FormBuilder
   ) {
     this.initForm();
   }
 
+  // =========================
+  // INIT
+  // =========================
   ngOnInit() {
-    this.loadPermissions();
-  }
-
-  ngAfterViewInit() {
-    const modalEl = document.getElementById('permissionModal');
-    if (modalEl) {
-      this.modalInstance = new bootstrap.Modal(modalEl, {
-        backdrop: 'static',
-        keyboard: false
-      });
-    }
+    this.userMenuId = this.permission.getCurrentMenuId();
+    this.load();
   }
 
   // =========================
-  // PERMISSION CHECK
+  // PERMISSION
   // =========================
   can(action: string) {
     return this.permission.has(this.userMenuId, action);
+  }
+
+  canSave() {
+    return this.mode !== 'view' &&
+      this.can(this.mode === 'edit' ? 'edit' : 'create');
   }
 
   // =========================
@@ -77,42 +91,39 @@ export class Permissions implements OnInit, AfterViewInit {
   // =========================
   // LOAD
   // =========================
-  async loadPermissions() {
-    this.loader.show();
-    try {
-      this.permissions = await this.permissionService.getPermissions();
-      this.page = 1;
-    } catch (err: any) {
-      Swal.fire('Error', err.message || 'Failed to load', 'error');
-    } finally {
-      this.loader.hide();
-    }
+  async load() {
+    this.permissions = await this.crud.getAll({
+      select: 'id,name,description,is_active,created_at',
+      page: 1,
+      pageSize: 10
+    });
+
+    this.page = 1;
   }
 
   // =========================
-  // FILTER + PAGINATION
+  // FILTER
   // =========================
-  get filteredPermissions() {
+  get filtered() {
     return this.permissions.filter(p =>
       this.activeTab === 'active' ? p.is_active : !p.is_active
     );
   }
 
+  // =========================
+  // PAGINATION
+  // =========================
+  get paginated() {
+    const start = (this.page - 1) * this.pageSize;
+    return this.filtered.slice(start, start + this.pageSize);
+  }
+
   get totalPages() {
-    return Math.ceil(this.filteredPermissions.length / this.pageSize);
+    return Math.ceil(this.filtered.length / this.pageSize);
   }
 
   get totalPagesArray() {
     return Array(this.totalPages).fill(0).map((_, i) => i + 1);
-  }
-
-  get paginatedPermissions() {
-    const start = (this.page - 1) * this.pageSize;
-    return this.filteredPermissions.slice(start, start + this.pageSize);
-  }
-
-  goToPage(p: number) {
-    this.page = p;
   }
 
   nextPage() {
@@ -123,18 +134,32 @@ export class Permissions implements OnInit, AfterViewInit {
     if (this.page > 1) this.page--;
   }
 
-  changeTab(tab: string) {
+  goToPage(p: number) {
+    this.page = p;
+  }
+
+  changeTab(tab: 'active' | 'inactive') {
     this.activeTab = tab;
     this.page = 1;
   }
 
   // =========================
-  // MODAL
+  // ACTION HANDLER
   // =========================
-  openCreateModal() {
-    this.isEditMode = false;
-    this.isViewMode = false;
-    this.selectedPermissionId = null;
+  handleAction(e: any) {
+    const { action, row } = e;
+
+    if (action === 'view') this.openView(row);
+    if (action === 'edit') this.openEdit(row);
+    if (action === 'delete') this.delete(row.id);
+  }
+
+  // =========================
+  // MODAL CONTROL (FIXED)
+  // =========================
+  openCreate() {
+    this.mode = 'create';
+    this.selectedId = null;
 
     this.form.reset({
       name: '',
@@ -143,104 +168,64 @@ export class Permissions implements OnInit, AfterViewInit {
     });
 
     this.form.enable();
-    this.modalInstance.show();
+    this.isModalOpen = true;
   }
 
-  openEditModal(p: any) {
-    this.isEditMode = true;
-    this.isViewMode = false;
-    this.selectedPermissionId = p.id;
+  openEdit(p: any) {
+    this.mode = 'edit';
+    this.selectedId = p.id;
 
     this.form.patchValue(p);
     this.form.enable();
-
-    this.modalInstance.show();
+    this.isModalOpen = true;
   }
 
-  openViewModal(p: any) {
-    this.isViewMode = true;
-    this.isEditMode = false;
-    this.selectedPermissionId = p.id;
+  openView(p: any) {
+    this.mode = 'view';
+    this.selectedId = p.id;
 
     this.form.patchValue(p);
     this.form.disable();
-
-    this.modalInstance.show();
+    this.isModalOpen = true;
   }
 
   closeModal() {
-    this.modalInstance?.hide();
+    this.isModalOpen = false;
   }
 
   // =========================
   // SAVE
   // =========================
   async save() {
+
     if (this.form.invalid) return;
 
-    this.loader.show();
+    const value = this.form.getRawValue();
 
-    try {
-      const value = this.form.getRawValue();
-
-      if (this.isEditMode && this.selectedPermissionId) {
-
-        await this.permissionService.updatePermission(
-          this.selectedPermissionId,
-          value
-        );
-
-        Swal.fire('Updated!', 'Permission updated', 'success');
-
-      } else {
-
-        await this.permissionService.createPermission(value);
-
-        Swal.fire('Created!', 'Permission created', 'success');
-      }
-
-      await this.loadPermissions();
-      this.closeModal();
-
-    } catch (err: any) {
-      Swal.fire('Error', err.message || 'Save failed', 'error');
-    } finally {
-      this.loader.hide();
+    if (this.mode === 'edit' && this.selectedId) {
+      await this.crud.update(this.selectedId, value);
+    } else {
+      await this.crud.create(value);
     }
+
+    await this.load();
+    this.isModalOpen = false;
   }
 
   // =========================
   // DELETE
   // =========================
-  confirmDelete(permission: any) {
-    Swal.fire({
-      title: 'Are you sure?',
-      text: `Delete "${permission.name}" ?`,
+  async delete(id: string) {
+    const confirm = await Swal.fire({
+      title: 'Delete role?',
+      text: 'This cannot be undone!',
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#d33',
-      confirmButtonText: 'Yes, delete it!'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        this.deletePermission(permission.id);
-      }
+      confirmButtonText: 'Yes delete'
     });
-  }
 
-  async deletePermission(id: string) {
-    this.loader.show();
-
-    try {
-      await this.permissionService.deletePermission(id);
-
-      Swal.fire('Deleted!', 'Permission deleted successfully', 'success');
-
-      await this.loadPermissions();
-
-    } catch (err: any) {
-      Swal.fire('Error', err.message || 'Delete failed', 'error');
-    } finally {
-      this.loader.hide();
-    }
+    if (!confirm.isConfirmed) return;
+    await this.crud.delete(id);
+    await this.load();
   }
 }

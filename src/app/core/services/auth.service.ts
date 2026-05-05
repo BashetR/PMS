@@ -4,28 +4,17 @@ import { SupabaseService } from './supabase.service';
 import { AppInitService } from './app-init.service';
 import { IdleService } from './idle.service';
 
-@Injectable({
-  providedIn: 'root',
-})
-export class Auth {
+@Injectable({ providedIn: 'root', })
 
+export class Auth {
   private isInitialized = false;
 
-  constructor(
-    private router: Router,
-    private supabase: SupabaseService,
-    private appInit: AppInitService,
-    private idleService: IdleService
-  ) {
+  constructor(private router: Router, private supabase: SupabaseService, private appInit: AppInitService, private idleService: IdleService) {
     this.initAuthListener();
   }
 
-  // =========================
-  // SESSION RESTORE HANDLER
-  // =========================
   private initAuthListener() {
     this.supabase.client.auth.onAuthStateChange(async (event, session) => {
-
       if (event === 'SIGNED_IN' && session?.user) {
         await this.bootstrapApp();
       }
@@ -36,12 +25,8 @@ export class Auth {
     });
   }
 
-  // =========================
-  // SAFE APP BOOTSTRAP
-  // =========================
   private async bootstrapApp() {
     if (this.isInitialized) return;
-
     this.isInitialized = true;
     await this.appInit.loadInitialData();
   }
@@ -51,11 +36,7 @@ export class Auth {
     return user;
   }
 
-  // =========================
-  // LOGIN
-  // =========================
   async login(payload: { Email: string; Password: string }) {
-
     const { data, error } =
       await this.supabase.client.auth.signInWithPassword({
         email: payload.Email,
@@ -63,22 +44,11 @@ export class Auth {
       });
 
     if (error) throw error;
-
-    // IMPORTANT: AppInit will be triggered by auth listener
     this.router.navigate(['/dashboard']);
-
     return data;
   }
 
-  // =========================
-  // REGISTER
-  // =========================
-  async register(payload: {
-    email: string;
-    password: string;
-    username: string;
-  }) {
-
+  async register(payload: { email: string; password: string; username: string; }) {
     const { data, error } =
       await this.supabase.client.auth.signUp({
         email: payload.email,
@@ -105,9 +75,6 @@ export class Auth {
     return data;
   }
 
-  // =========================
-  // LOGOUT
-  // =========================
   async logout() {
     this.idleService.stopWatching();
     await this.supabase.signOut();
@@ -115,22 +82,13 @@ export class Auth {
     this.router.navigate(['/login']);
   }
 
-  // =========================
-  // FORGOT PASSWORD
-  // =========================
   async forgotPassword(email: string) {
-    const { error } =
-      await this.supabase.client.auth.resetPasswordForEmail(email);
-
+    const { error } = await this.supabase.client.auth.resetPasswordForEmail(email);
     if (error) throw error;
   }
 
-  // =========================
-  // CLEAR CACHE + STATE
-  // =========================
   private clearAppState() {
     this.isInitialized = false;
-    // optionally clear cache here
   }
 
   async updatePassword(newPassword: string) {
@@ -138,6 +96,26 @@ export class Auth {
       password: newPassword
     });
 
+    if (error) throw error;
+  }
+
+  hasPermission(menu: any, permissionId: string): boolean {
+    return menu.permissions?.includes(permissionId);
+  }
+
+  async otp(code: string, email: string) {
+    const { data, error } = await this.supabase.client.auth.verifyOtp({
+      email: email,
+      token: code,
+      type: 'email'
+    });
+    if (error) throw error;
+  }
+
+  async sendOtp(email: string) {
+    const { data, error } = await this.supabase.client.auth.signInWithOtp({
+      email: email
+    });
     if (error) throw error;
   }
 }

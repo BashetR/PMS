@@ -1,91 +1,88 @@
 <div class="card">
-    <!-- ================= HEADER ================= -->
+
+    <!-- HEADER -->
     <div class="card-header">
         <h1 class="card-title"><b>Users</b></h1>
 
         <div class="card-tools">
-            <button *ngIf="can('create')" class="btn btn-primary btn-sm" (click)="openCreateModal()">
+            <button *ngIf="can('create')" class="btn btn-primary btn-sm" (click)="openCreate()">
                 <i class="fas fa-plus"></i> New
             </button>
         </div>
     </div>
 
+    <!-- BODY -->
     <div class="card-body">
 
+        <!-- Tabs -->
+        <ul class="nav nav-pills mb-3">
+            <li class="nav-item">
+                <a class="nav-link" [class.active]="activeTab==='active'" (click)="changeTab('active')">Active</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" [class.active]="activeTab==='inactive'" (click)="changeTab('inactive')">Inactive</a>
+            </li>
+        </ul>
+
         <!-- TABLE -->
-        <div class="table-responsive">
-            <table class="table table-bordered table-hover">
+        <app-data-table [columns]="columns" [data]="paginated" (action)="handleAction($event)">
+        </app-data-table>
 
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
+        <!-- PAGINATION -->
+        <div class="d-flex justify-content-between mt-3">
+            <div>
+                Showing {{ filtered.length ? (page - 1) * pageSize + 1 : 0 }}
+                to {{ page * pageSize > filtered.length ? filtered.length : page * pageSize }}
+                of {{ filtered.length }}
+            </div>
 
-                <tbody>
-                    <tr *ngFor="let user of users">
+            <ul class="pagination pagination-sm m-0">
+                <li class="page-item" [class.disabled]="page === 1">
+                    <a class="page-link" (click)="page = page - 1">«</a>
+                </li>
 
-                        <td>{{ user.full_name }}</td>
-                        <td>{{ user.email }}</td>
+                <li class="page-item" *ngFor="let p of totalPagesArray" [class.active]="p === page">
+                    <a class="page-link" (click)="page = p">{{ p }}</a>
+                </li>
 
-                        <td>
-                            {{ user.role?.role_name || '-' }}
-                        </td>
-
-                        <td>
-                            {{ user.is_active ? 'Active' : 'Inactive' }}
-                        </td>
-
-                        <td class="d-flex gap-1">
-                            <button *ngIf="can('view')" class="btn btn-info btn-sm" (click)="openViewModal(user)"><i class="fas fa-eye"></i></button>
-                            <button *ngIf="can('edit')" class="btn btn-warning btn-sm" (click)="openEditModal(user)"><i class="fas fa-edit"></i></button>
-                            <button *ngIf="can('delete')" class="btn btn-danger btn-sm" (click)="deleteUser(user.id)"><i class="fas fa-trash"></i></button>
-                        </td>
-
-                    </tr>
-                </tbody>
-
-            </table>
+                <li class="page-item" [class.disabled]="page === totalPages">
+                    <a class="page-link" (click)="page = page + 1">»</a>
+                </li>
+            </ul>
         </div>
 
     </div>
 </div>
 
 <!-- MODAL -->
-<div class="modal-overlay" *ngIf="showModal">
-    <div class="modal-box">
+<app-form-modal [title]="mode==='edit' ? 'Edit User' : (mode==='view' ? 'View User' : 'Create User')" [form]="form"
+    [mode]="mode" [visible]="modalVisible" [canSave]="canSave()" (save)="save()" (close)="closeModal()">
 
-        <h3>{{ isViewMode ? 'View' : isEditMode ? 'Edit' : 'Create' }} User</h3>
+    <form [formGroup]="form">
 
-        <form [formGroup]="form">
+        <div class="mb-3">
+            <label>Name</label>
+            <input class="form-control" formControlName="full_name" [readonly]="mode==='view'">
+        </div>
 
-            <input class="form-control mb-2" placeholder="Full Name" formControlName="full_name">
+        <div class="mb-3">
+            <label>Email</label>
+            <input class="form-control" formControlName="email" [readonly]="mode==='view'">
+        </div>
 
-            <input class="form-control mb-2" placeholder="Email" formControlName="email">
-
-            <!-- ROLE DROPDOWN -->
-            <select class="form-control mb-2" formControlName="role_id">
-                <option value="">Select Role</option>
-                <option *ngFor="let r of roles" [value]="r.id">
+        <div class="mb-3">
+            <label>Role</label>
+            <select class="form-control" formControlName="role_id" [disabled]="mode==='view'">
+                <option [ngValue]="null">Select Role</option>
+                <option *ngFor="let r of roles" [ngValue]="r.id">
                     {{ r.role_name }}
                 </option>
             </select>
-
-            <label>
-                <input type="checkbox" formControlName="is_active">
-                Active
-            </label>
-
-        </form>
-
-        <div class="mt-3 d-flex gap-2">
-            <button class="btn btn-success" *ngIf="!isViewMode && can(isEditMode ? 'edit' : 'create')" (click)="saveUser()">Save</button>
-            <button class="btn btn-secondary" (click)="closeModal()">Close</button>
         </div>
 
-    </div>
-</div>
+        <div class="form-check">
+            <input type="checkbox" class="form-check-input" formControlName="is_active" [disabled]="mode==='view'">
+            <label class="form-check-label">Active</label>
+        </div>
+    </form>
+</app-form-modal>

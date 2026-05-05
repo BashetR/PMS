@@ -1,75 +1,91 @@
+import {
+  Component,
+  OnInit,
+} from '@angular/core';
+
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
 import {
   FormBuilder,
   FormGroup,
-  ReactiveFormsModule,
   Validators,
+  ReactiveFormsModule,
   FormControl
 } from '@angular/forms';
 
-import Swal from 'sweetalert2';
-
-import { LoaderService } from '../../core/services/loader.service';
+import { MenuCrudService } from '../../core/services/crud/menu-crud.service';
 import { PermissionService } from '../../core/services/permission.service';
-import { MenuService } from '../../core/services/menu.service';
+
+import { DataTable } from '../../shared/components/data-table/data-table';
+import { FormModal } from '../../shared/components/form-modal/form-modal';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-menus',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, DataTable, FormModal],
   templateUrl: './menus.html',
-  styleUrl: './menus.css'
 })
 export class Menus implements OnInit {
 
   menus: any[] = [];
-  permissionList: any[] = [];
-  filteredPermissionList: any[] = [];
-
-  activeTab = 'active';
-  page = 1;
-  pageSize = 5;
-
-  showModal = false;
-  isEditMode = false;
-  isViewMode = false;
-  selectedId: number | null = null;
-
-  permissionDropdownOpen = false;
-  permissionSearchControl = new FormControl('');
+  permissions: any[] = [];
 
   form!: FormGroup;
 
-  userMenuId = 4; // menu id for RBAC
+  mode: 'create' | 'edit' | 'view' = 'create';
+  selectedId: number | null = null;
+
+  activeTab: 'active' | 'inactive' = 'active';
+
+  page = 1;
+  pageSize = 5;
+
+  userMenuId!: number;
+
+  columns: any[] = [];
+
+  permissionSearch = new FormControl('');
+  filteredPermissions: any[] = [];
+
+  // ✅ MODAL CONTROL (FIXED)
+  isModalOpen = false;
 
   constructor(
-    private menuService: MenuService,            // ✅ USE SERVICE
+    private crud: MenuCrudService,
     private permissionService: PermissionService,
-    private loader: LoaderService,
     private fb: FormBuilder
   ) {
     this.initForm();
+    this.initTable();
   }
 
-  async ngOnInit() {
-    await this.loadMenus();
-    await this.loadPermissions();
+  // =========================
+  // INIT
+  // =========================
+  ngOnInit() {
+    this.userMenuId = this.permissionService.getCurrentMenuId();
+    this.load();
 
-    this.permissionSearchControl.valueChanges.subscribe(value => {
-      this.filterPermissions(value || '');
+    this.permissionSearch.valueChanges.subscribe(v => {
+      this.filteredPermissions =
+        this.permissionService.filterPermissions(this.permissions, v || '');
     });
   }
 
   // =========================
-  // PERMISSION CHECK
+  // PERMISSION
   // =========================
   can(action: string) {
     return this.permissionService.has(this.userMenuId, action);
   }
 
+  canSave() {
+    return this.mode !== 'view' &&
+      this.can(this.mode === 'edit' ? 'edit' : 'create');
+  }
+
   // =========================
-  // FORM
+  // FORM INIT
   // =========================
   initForm() {
     this.form = this.fb.group({
@@ -86,37 +102,43 @@ export class Menus implements OnInit {
   }
 
   // =========================
-  // LOAD MENUS
+  // TABLE CONFIG
   // =========================
-  async loadMenus() {
-    this.loader.show();
-    try {
-      this.menus = await this.menuService.getAll();
-    } catch (err) {
-      console.error('LOAD MENUS ERROR:', err);
-    } finally {
-      this.loader.hide();
-    }
+  initTable() {
+    this.columns = [
+      { key: 'menu_name', label: 'Name' },
+      { key: 'menu_type', label: 'Type' },
+      { key: 'route', label: 'Route' },
+      { key: 'order_no', label: 'Order' },
+      { key: 'status', label: 'Status', type: 'status' },
+      { key: 'created_at', label: 'Created', type: 'date' },
+      {
+        type: 'actions',
+        actions: [
+          { name: 'view', icon: 'fas fa-eye', class: 'btn-info', show: () => this.can('view') },
+          { name: 'edit', icon: 'fas fa-edit', class: 'btn-warning', show: () => this.can('edit') },
+          { name: 'delete', icon: 'fas fa-trash', class: 'btn-danger', show: () => this.can('delete') }
+        ]
+      }
+    ];
   }
 
   // =========================
-  // LOAD PERMISSIONS
+  // LOAD DATA
   // =========================
-  async loadPermissions() {
-    this.loader.show();
-    try {
-      this.permissionList = await this.permissionService.getPermissions();
-      this.filteredPermissionList = this.permissionList;
-    } catch (err) {
-      console.error('LOAD PERMISSIONS ERROR:', err);
-    } finally {
-      this.loader.hide();
-    }
-  }
+  async load() {
+    const [menus, permissions] = await Promise.all([
+      this.crud.getAll({
+        select: 'id,menu_name,menu_type,route,order_no,status,created_at',
+        page: 1,
+        pageSize: 10
+      }),
+      this.permissionService.getPermissions()
+    ]);
 
-  filterPermissions(search: string) {
-    this.filteredPermissionList =
-      this.permissionService.filterPermissions(this.permissionList, search);
+    this.menus = menus;
+    this.permissions = permissions;
+    this.filteredPermissions = this.permissions;
   }
 
   // =========================
@@ -133,23 +155,42 @@ export class Menus implements OnInit {
     return this.filteredMenus.slice(start, start + this.pageSize);
   }
 
-  nextPage() { this.page++; }
-  prevPage() { if (this.page > 1) this.page--; }
+  changeTab(tab: 'active' | 'inactive') {
+    this.activeTab = tab;
+    this.page = 1;
+  }
 
+  nextPage() {
+    if (this.page * this.pageSize < this.filteredMenus.length) this.page++;
+  }
+
+  prevPage() {
+    if (this.page > 1) this.page--;
+  }
+
+  // =========================
+  // HELPERS
+  // =========================
   get mainMenus() {
     return this.menus.filter(m => m.menu_type === 'menu');
   }
 
   // =========================
-  // MODAL
+  // ACTION HANDLER
   // =========================
-  openCreateModal() {
-    this.isEditMode = false;
-    this.isViewMode = false;
-    this.selectedId = null;
+  handleAction(e: any) {
+    const { action, row } = e;
+    if (action === 'view') this.openView(row);
+    if (action === 'edit') this.openEdit(row);
+    if (action === 'delete') this.delete(row.id);
+  }
 
-    this.permissionDropdownOpen = false;
-    this.permissionSearchControl.setValue('');
+  // =========================
+  // MODAL CONTROL (FIXED)
+  // =========================
+  openCreate() {
+    this.mode = 'create';
+    this.selectedId = null;
 
     this.form.reset({
       menu_name: '',
@@ -164,168 +205,90 @@ export class Menus implements OnInit {
     });
 
     this.form.enable();
-    this.showModal = true;
+    this.isModalOpen = true;
   }
 
-  openEditModal(m: any) {
-    this.isEditMode = true;
-    this.isViewMode = false;
+  openEdit(m: any) {
+    this.mode = 'edit';
     this.selectedId = m.id;
-
-    const permissions = (m.permission_list || []).map((p: any) => p.permission_id);
 
     this.form.patchValue({
       ...m,
-      permission_list: permissions
+      permission_list: m.permission_list?.map((p: any) => p.permission_id) || []
     });
 
     this.form.enable();
-    this.showModal = true;
+    this.isModalOpen = true;
   }
 
-  openViewModal(m: any) {
-    this.isViewMode = true;
-    this.isEditMode = false;
-
-    const permissions = (m.permission_list || []).map((p: any) => p.permission_id);
+  openView(m: any) {
+    this.mode = 'view';
+    this.selectedId = m.id;
 
     this.form.patchValue({
       ...m,
-      permission_list: permissions
+      permission_list: m.permission_list?.map((p: any) => p.permission_id) || []
     });
 
     this.form.disable();
-    this.showModal = true;
+    this.isModalOpen = true;
   }
 
   closeModal() {
-    this.showModal = false;
-    this.permissionDropdownOpen = false;
+    this.isModalOpen = false;
   }
 
   // =========================
   // SAVE
   // =========================
-  async save(): Promise<void> {
+  async save() {
+
     if (this.form.invalid) return;
 
-    this.loader.show();
+    const value = this.form.getRawValue();
 
-    try {
-      const value = this.form.getRawValue();
-
-      if (value.menu_type === 'sub-menu' && !value.parent_id) {
-        Swal.fire('Error', 'Sub-menu must have parent menu', 'error');
-        return;
-      }
-
-      if (this.isEditMode && this.selectedId) {
-        await this.menuService.update(this.selectedId, value);
-        Swal.fire('Success', 'Menu updated', 'success');
-      } else {
-        await this.menuService.create(value);
-        Swal.fire('Success', 'Menu created', 'success');
-      }
-
-      await this.loadMenus();
-      this.closeModal();
-
-    } catch (err) {
-      console.error('SAVE ERROR:', err);
-      Swal.fire('Error', 'Something went wrong', 'error');
-    } finally {
-      this.loader.hide();
+    if (value.menu_type === 'sub-menu' && !value.parent_id) {
+      alert('Sub-menu must have parent');
+      return;
     }
+
+    if (this.mode === 'edit' && this.selectedId) {
+      await this.crud.update(this.selectedId, value);
+    } else {
+      await this.crud.create(value);
+    }
+
+    await this.load();
+    this.isModalOpen = false;
   }
 
   // =========================
   // DELETE
   // =========================
-  async deleteMenu(id: number): Promise<void> {
-
+  async delete(id: number) {
     const confirm = await Swal.fire({
-      title: 'Delete menu?',
+      title: 'Delete role?',
       text: 'This cannot be undone!',
       icon: 'warning',
-      showCancelButton: true
+      showCancelButton: true,
+      confirmButtonText: 'Yes delete'
     });
 
     if (!confirm.isConfirmed) return;
-
-    this.loader.show();
-
-    try {
-      await this.menuService.delete(id);
-
-      Swal.fire('Deleted', 'Menu removed', 'success');
-
-      await this.loadMenus();
-      this.closeModal();
-
-    } catch (err) {
-      console.error('DELETE ERROR:', err);
-      Swal.fire('Error', 'Delete failed', 'error');
-    } finally {
-      this.loader.hide();
-    }
+    await this.crud.delete(id);
+    await this.load();
   }
 
   // =========================
-  // PERMISSION UI HANDLING
+  // PERMISSION SELECT
   // =========================
-  togglePermissionDropdown() {
-    this.permissionDropdownOpen = !this.permissionDropdownOpen;
-  }
-
-  togglePermission(id: number, event: any) {
+  togglePermission(id: number) {
     const list = this.form.value.permission_list || [];
 
-    if (event.target.checked) {
-      if (!list.includes(id)) list.push(id);
-    } else {
-      const index = list.indexOf(id);
-      if (index > -1) list.splice(index, 1);
-    }
+    const updated = list.includes(id)
+      ? list.filter((x: number) => x !== id)
+      : [...list, id];
 
-    this.form.patchValue({
-      permission_list: [...list]
-    });
-  }
-
-  removePermission(id: number) {
-    const updated = (this.form.value.permission_list || [])
-      .filter((x: number) => x !== id);
-
-    this.form.patchValue({
-      permission_list: updated
-    });
-  }
-
-  isAllSelected(): boolean {
-    return this.filteredPermissionList.length > 0 &&
-      this.filteredPermissionList.every(p =>
-        this.form.value.permission_list.includes(p.id)
-      );
-  }
-
-  toggleSelectAll(event: any) {
-    if (event.target.checked) {
-      const allIds = this.filteredPermissionList.map(p => p.id);
-
-      const merged = Array.from(new Set([
-        ...(this.form.value.permission_list || []),
-        ...allIds
-      ]));
-
-      this.form.patchValue({ permission_list: merged });
-
-    } else {
-      const remaining = (this.form.value.permission_list || [])
-        .filter((id: number) =>
-          !this.filteredPermissionList.some(p => p.id === id)
-        );
-
-      this.form.patchValue({ permission_list: remaining });
-    }
+    this.form.patchValue({ permission_list: updated });
   }
 }
