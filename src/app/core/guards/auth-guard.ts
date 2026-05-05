@@ -1,18 +1,19 @@
 import { inject } from '@angular/core';
-import { CanActivateFn, Router } from '@angular/router';
+import { CanMatchFn, Router } from '@angular/router';
 import { SupabaseService } from '../services/supabase.service';
+import { RbacService } from '../services/rbac.service';
 
-export const authGuard: CanActivateFn = async (route, state) => {
-  const supabase = inject(SupabaseService);
+export const authGuard: CanMatchFn = (route, state) => {
+  const rbac = inject(RbacService);
   const router = inject(Router);
 
-  const session = await supabase.getSession();
-
-  if (session?.user) {
-    return true;
+  if (!rbac.isInitialized()) {
+    return router.createUrlTree(['/login']); // or a loading page
   }
 
-  return router.createUrlTree(['/login'], {
-    queryParams: { returnUrl: state.url }
-  });
+  if (!rbac.user()) {
+    return router.createUrlTree(['/login']);
+  }
+
+  return true;
 };

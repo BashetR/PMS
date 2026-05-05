@@ -1,0 +1,44 @@
+<div class="table-responsive">
+    <table class="table table-bordered table-hover">
+        <thead class="thead-light">
+            <tr>
+                <th *ngFor="let col of columns">{{ col.label || '' }}</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            <tr *ngIf="!data || !data.length">
+                <td [attr.colspan]="columns.length" class="text-center text-muted">{{ emptyText }}</td>
+            </tr>
+
+            <tr *ngFor="let row of data; trackBy: trackById">
+                <td *ngFor="let col of columns">
+                    <ng-container *ngIf="!col.type">
+                        {{ row[col.key] }}
+                    </ng-container>
+
+                    <ng-container *ngIf="col.type === 'date'">
+                        {{ row[col.key] | date:'short' }}
+                    </ng-container>
+
+                    <ng-container *ngIf="col.type === 'status'">
+                        <span class="badge bg-success" *ngIf="row[col.key]">
+                            <i class="fas fa-check"></i> Active
+                        </span>
+                        <span class="badge bg-danger" *ngIf="!row[col.key]">
+                            <i class="fas fa-times"></i> Inactive
+                        </span>
+                    </ng-container>
+
+                    <ng-container *ngIf="col.type === 'actions'">
+                        <ng-container *ngFor="let a of col.actions">
+                            <button *ngIf="a.show(row)" class="btn btn-sm me-1" [ngClass]="a.class"
+                                (click)="trigger(a.name, row)"><i [class]="a.icon"></i>
+                            </button>
+                        </ng-container>
+                    </ng-container>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>

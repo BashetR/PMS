@@ -2,13 +2,11 @@ import { Injectable } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 
 @Injectable({ providedIn: 'root' })
+
 export class RolePermissionService {
 
     constructor(private supabase: SupabaseService) { }
 
-    // =========================
-    // LOAD INITIAL DATA
-    // =========================
     async getInitialData() {
         const [rolesRes, menusRes, permRes] = await Promise.all([
             this.supabase.client.from('role').select('*').order('role_name'),
@@ -27,46 +25,22 @@ export class RolePermissionService {
         };
     }
 
-    // =========================
-    // GET MENU PERMISSIONS
-    // =========================
     async getMenuPermissions(menuId: number) {
-        const { data, error } = await this.supabase.client
-            .from('menu')
-            .select('permission_list')
-            .eq('id', menuId)
-            .single();
+        const { data, error } = await this.supabase.client.from('menu').select('permission_list').eq('id', menuId).single();
 
         if (error) throw error;
-
         return data?.permission_list || [];
     }
 
-    // =========================
-    // GET ROLE MAPPINGS
-    // =========================
     async getRoleMappings(roleId: number, menuId: number) {
-        const { data, error } = await this.supabase.client
-            .from('role_menu_permission_relationship_map')
-            .select('permission_id')
-            .eq('role_id', roleId)
-            .eq('menu_id', menuId);
+        const { data, error } = await this.supabase.client.from('role_menu_permission_relationship_map').select('permission_id').eq('role_id', roleId).eq('menu_id', menuId);
 
         if (error) throw error;
-
         return data || [];
     }
 
-    // =========================
-    // SAVE MAPPINGS
-    // =========================
     async saveMappings(roleId: number, menuId: number, permissionIds: string[]) {
-
-        await this.supabase.client
-            .from('role_menu_permission_relationship_map')
-            .delete()
-            .eq('role_id', roleId)
-            .eq('menu_id', menuId);
+        await this.supabase.client.from('role_menu_permission_relationship_map').delete().eq('role_id', roleId).eq('menu_id', menuId);
 
         const rows = permissionIds.map(id => ({
             role_id: roleId,
@@ -75,9 +49,7 @@ export class RolePermissionService {
         }));
 
         if (rows.length) {
-            const { error } = await this.supabase.client
-                .from('role_menu_permission_relationship_map')
-                .insert(rows);
+            const { error } = await this.supabase.client.from('role_menu_permission_relationship_map').insert(rows);
 
             if (error) throw error;
         }

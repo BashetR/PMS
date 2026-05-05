@@ -1,189 +1,127 @@
 <div class="card">
+
+    <!-- ================= HEADER ================= -->
     <div class="card-header">
         <h1 class="card-title"><b>Menus</b></h1>
 
         <div class="card-tools">
-            <button *ngIf="can('create')" class="btn btn-primary btn-sm" (click)="openCreateModal()">
+            <button *ngIf="can('create')" class="btn btn-primary btn-sm" (click)="openCreate()">
                 <i class="fas fa-plus"></i> New
             </button>
         </div>
     </div>
 
+    <!-- ================= BODY ================= -->
     <div class="card-body">
-        <ul class="nav nav-tabs mb-3">
+
+        <!-- Tabs -->
+        <ul class="nav nav-pills mb-3">
             <li class="nav-item">
-                <a class="nav-link" [class.active]="activeTab==='active'" (click)="activeTab='active'">
-                    Active
-                </a>
+                <a class="nav-link" [class.active]="activeTab === 'active'" (click)="changeTab('active')">Active</a>
             </li>
+
             <li class="nav-item">
-                <a class="nav-link" [class.active]="activeTab==='inactive'" (click)="activeTab='inactive'">
-                    Inactive
-                </a>
+                <a class="nav-link" [class.active]="activeTab === 'inactive'"
+                    (click)="changeTab('inactive')">Inactive</a>
             </li>
         </ul>
 
-        <div class="table-responsive">
-            <table class="table table-bordered table-hover text-center align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>#</th>
-                        <th>Name</th>
-                        <th>Type</th>
-                        <th>Icon</th>
-                        <th>Route</th>
-                        <th>Parent</th>
-                        <th>Order</th>
-                        <th>Status</th>
-                        <th style="min-width:160px">Actions</th>
-                    </tr>
-                </thead>
+        <!-- ================= DATA TABLE ================= -->
+        <app-data-table [columns]="columns" [data]="paginatedMenus" [emptyText]="'No menus found'"
+            (action)="handleAction($event)">
+        </app-data-table>
 
-                <tbody>
-                    <tr *ngIf="!paginatedMenus.length">
-                        <td colspan="9" class="text-muted">
-                            No menus found
-                        </td>
-                    </tr>
+        <!-- ================= PAGINATION ================= -->
+        <div class="d-flex justify-content-between mt-3">
 
-                    <tr *ngFor="let m of paginatedMenus; let i = index">
-                        <td>{{ i + 1 }}</td>
-                        <td>{{ m.menu_name }}</td>
-                        <td>
-                            <span class="badge bg-info" *ngIf="m.menu_type === 'menu'">Menu</span>
-                            <span class="badge bg-secondary" *ngIf="m.menu_type === 'sub-menu'">Sub</span>
-                        </td>
-                        <td><i [class]="m.icon"></i></td>
-                        <td>{{ m.route }}</td>
-                        <td>{{ menus.find(x => x.id === m.parent_id)?.menu_name || '-' }}</td>
-                        <td>{{ m.order_no }}</td>
-                        <td>
-                            <span class="badge bg-success" *ngIf="m.status">Active</span>
-                            <span class="badge bg-danger" *ngIf="!m.status">Inactive</span>
-                        </td>
-                        <td>
-                            <button *ngIf="can('view')" class="btn btn-info btn-sm me-1 mb-1" (click)="openViewModal(m)"><i class="fas fa-eye"></i></button>
-                            <button *ngIf="can('edit')" class="btn btn-warning btn-sm me-1 mb-1" (click)="openEditModal(m)"><i class="fas fa-edit"></i></button>
-                            <button *ngIf="can('delete')" class="btn btn-danger btn-sm mb-1" (click)="deleteMenu(m.id)"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+            <div>
+                Showing {{ (page - 1) * pageSize + 1 }}
+                to {{ page * pageSize > filteredMenus.length ? filteredMenus.length : page * pageSize }}
+                of {{ filteredMenus.length }}
+            </div>
+
+            <div>
+                <button class="btn btn-sm btn-secondary me-2" (click)="prevPage()" [disabled]="page === 1">
+                    Prev
+                </button>
+
+                <button class="btn btn-sm btn-secondary" (click)="nextPage()"
+                    [disabled]="page * pageSize >= filteredMenus.length">
+                    Next
+                </button>
+            </div>
+
         </div>
 
-        <div class="d-flex justify-content-end mt-3 flex-wrap">
-            <button class="btn btn-secondary btn-sm me-2 mb-2" (click)="prevPage()" [disabled]="page === 1">Prev</button>
-            <span class="align-self-center">Page {{ page }}</span>
-            <button class="btn btn-secondary btn-sm ms-2 mb-2" (click)="nextPage()" [disabled]="page * pageSize >= filteredMenus.length">Next</button>
-        </div>
     </div>
 </div>
 
-<div class="modal fade show d-block" *ngIf="showModal">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5>{{ isViewMode ? 'View' : isEditMode ? 'Edit' : 'Create' }} Menu</h5>
-                <button class="btn-close" (click)="closeModal()"></button>
+
+<!-- ================= FORM MODAL ================= -->
+<app-form-modal [visible]="isModalOpen" [title]="mode === 'edit' ? 'Edit Menu' : mode === 'view' ? 'View Menu' : 'Create Menu'"
+    [form]="form" [mode]="mode" [canSave]="canSave()" (save)="save()" (close)="isModalOpen = false">
+
+    <form [formGroup]="form">
+
+        <div class="row">
+
+            <!-- NAME -->
+            <div class="col-md-6 mb-2">
+                <label>Name</label>
+                <input class="form-control" formControlName="menu_name">
             </div>
 
-            <div class="modal-body">
-                <form [formGroup]="form">
-                    <div class="row">
-                        <div class="col-md-6 mb-2">
-                            <label>Name</label>
-                            <input class="form-control" formControlName="menu_name" [readonly]="isViewMode">
-                        </div>
-
-                        <div class="col-md-6 mb-2">
-                            <label>Slug</label>
-                            <input class="form-control" formControlName="slug" [readonly]="isViewMode">
-                        </div>
-
-                        <div class="col-md-6 mb-2">
-                            <label>Icon</label>
-                            <input class="form-control" formControlName="icon" [readonly]="isViewMode">
-                        </div>
-
-                        <div class="col-md-6 mb-2">
-                            <label>Route</label>
-                            <input class="form-control" formControlName="route" [readonly]="isViewMode">
-                        </div>
-
-                        <div class="col-md-6 mb-2">
-                            <label>Menu Type</label>
-                            <select class="form-control" formControlName="menu_type" [disabled]="isViewMode">
-                                <option value="menu">Menu</option>
-                                <option value="sub-menu">Sub Menu</option>
-                            </select>
-                        </div>
-
-                        <div class="col-md-6 mb-2" *ngIf="form.get('menu_type')?.value === 'sub-menu'">
-                            <label>Parent Menu</label>
-                            <select class="form-control" formControlName="parent_id" [disabled]="isViewMode">
-                                <option [ngValue]="null">Select Parent</option>
-                                <option *ngFor="let m of mainMenus" [ngValue]="m.id">
-                                    {{ m.menu_name }}
-                                </option>
-                            </select>
-                        </div>
-
-                        <div class="col-md-6 mb-2">
-                            <label>Order</label>
-                            <input type="number" class="form-control" formControlName="order_no" [readonly]="isViewMode">
-                        </div>
-
-                        <div class="col-12 mb-3">
-                            <label><b>Permissions</b></label>
-                            <div class="d-flex flex-wrap gap-2 mb-2">
-                                <ng-container *ngFor="let p of permissionList">
-                                    <span class="badge bg-primary d-flex align-items-center" *ngIf="(form.value.permission_list || []).includes(p.id)">
-                                        {{ p.name }}
-                                        <span class="ms-2" style="cursor:pointer" (click)="removePermission(p.id)">✕</span>
-                                    </span>
-                                </ng-container>
-                            </div>
-
-                            <div class="position-relative">
-                                <button type="button" class="form-control text-start"
-                                    (click)="togglePermissionDropdown()" [disabled]="isViewMode">
-                                    Select Permissions ▼
-                                </button>
-
-                                <div class="border p-2 bg-white shadow position-absolute w-100"
-                                    style="z-index:999; max-height:250px; overflow:auto" *ngIf="permissionDropdownOpen">
-                                    <input type="text" class="form-control mb-2" placeholder="Search permissions..." [formControl]="permissionSearchControl">
-                                    <div class="form-check mb-2">
-                                        <input type="checkbox" class="form-check-input" [checked]="isAllSelected()" (change)="toggleSelectAll($event)">
-                                        <label>Select All</label>
-                                    </div>
-                                    <hr>
-                                    <div *ngFor="let p of filteredPermissionList" class="form-check">
-                                        <input type="checkbox" class="form-check-input"
-                                            [checked]="(form.value.permission_list || []).includes(p.id)"
-                                            (change)="togglePermission(p.id, $event)">
-                                        <label>{{ p.name }}</label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-12">
-                            <div class="form-check">
-                                <input type="checkbox" formControlName="status" [disabled]="isViewMode">
-                                <label>Active</label>
-                            </div>
-                        </div>
-                    </div>
-                </form>
+            <!-- SLUG -->
+            <div class="col-md-6 mb-2">
+                <label>Slug</label>
+                <input class="form-control" formControlName="slug">
             </div>
 
-            <div class="modal-footer">
-                <button class="btn btn-primary" *ngIf="!isViewMode && can(isEditMode ? 'edit' : 'create')" (click)="save()">Save</button>
-                <button class="btn btn-secondary" (click)="closeModal()">Close</button>
+            <!-- ICON -->
+            <div class="col-md-6 mb-2">
+                <label>Icon</label>
+                <input class="form-control" formControlName="icon">
+            </div>
+
+            <!-- ROUTE -->
+            <div class="col-md-6 mb-2">
+                <label>Route</label>
+                <input class="form-control" formControlName="route">
+            </div>
+
+            <!-- TYPE -->
+            <div class="col-md-6 mb-2">
+                <label>Menu Type</label>
+                <select class="form-control" formControlName="menu_type">
+                    <option value="menu">Menu</option>
+                    <option value="sub-menu">Sub Menu</option>
+                </select>
+            </div>
+
+            <!-- PARENT -->
+            <div class="col-md-6 mb-2" *ngIf="form.get('menu_type')?.value === 'sub-menu'">
+                <label>Parent</label>
+                <select class="form-control" formControlName="parent_id">
+                    <option [ngValue]="null">Select</option>
+                    <option *ngFor="let m of mainMenus" [ngValue]="m.id">
+                        {{ m.menu_name }}
+                    </option>
+                </select>
+            </div>
+
+            <!-- ORDER -->
+            <div class="col-md-6 mb-2">
+                <label>Order</label>
+                <input type="number" class="form-control" formControlName="order_no">
+            </div>
+
+            <!-- STATUS -->
+            <div class="col-12">
+                <div class="form-check">
+                    <input type="checkbox" formControlName="status">
+                    <label>Active</label>
+                </div>
             </div>
         </div>
-    </div>
-</div>
-
-<div class="modal-backdrop fade show" *ngIf="showModal"></div>
+    </form>
+</app-form-modal>
