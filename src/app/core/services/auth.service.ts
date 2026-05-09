@@ -21,38 +21,55 @@ export class Auth {
   }
 
   // =========================
-  // SESSION RESTORE HANDLER
+  // AUTH STATE LISTENER (CORE FIX)
   // =========================
   private initAuthListener() {
-    this.supabase.client.auth.onAuthStateChange(async (event, session) => {
 
-      if (event === 'SIGNED_IN' && session?.user) {
-        await this.bootstrapApp();
-      }
+    this.supabase.client.auth.onAuthStateChange(
+      async (event, session) => {
 
-      if (event === 'SIGNED_OUT') {
-        this.clearAppState();
+        if (event === 'SIGNED_IN' && session?.user) {
+          await this.bootstrapApp();
+          this.idleService.startWatching(); // ✅ FIXED PLACE
+        }
+
+        if (event === 'SIGNED_OUT') {
+          this.idleService.stopWatching();  // ✅ FIXED PLACE
+          this.clearAppState();
+        }
       }
-    });
+    );
   }
 
   // =========================
-  // SAFE APP BOOTSTRAP
+  // BOOTSTRAP APP
   // =========================
   private async bootstrapApp() {
+
     if (this.isInitialized) return;
 
     this.isInitialized = true;
+
     await this.appInit.loadInitialData();
   }
 
+  // =========================
+  // GET USER
+  // =========================
   async getUser() {
-    const user = await this.supabase.getUser();
-    return user;
+    return await this.supabase.getUser();
   }
 
   // =========================
-  // LOGIN
+  // CHECK LOGIN
+  // =========================
+  async isLoggedIn(): Promise<boolean> {
+    const session = await this.supabase.getSession();
+    return !!session;
+  }
+
+  // =========================
+  // LOGIN (CLEAN - NO SIDE EFFECTS)
   // =========================
   async login(payload: { Email: string; Password: string }) {
 
@@ -64,8 +81,10 @@ export class Auth {
 
     if (error) throw error;
 
-    // IMPORTANT: AppInit will be triggered by auth listener
-    this.router.navigate(['/dashboard']);
+    // ❌ REMOVE idleService.startWatching()
+    // handled by auth listener now
+
+    this.router.navigate(['/app/dashboard']);
 
     return data;
   }
@@ -97,7 +116,6 @@ export class Auth {
         id: data.user.id,
         username: payload.username,
         email: payload.email,
-        role: 'User',
         role_id: 4
       });
     }
@@ -106,12 +124,11 @@ export class Auth {
   }
 
   // =========================
-  // LOGOUT
+  // LOGOUT (CLEAN)
   // =========================
   async logout() {
-    this.idleService.stopWatching();
+
     await this.supabase.signOut();
-    this.clearAppState();
     this.router.navigate(['/login']);
   }
 
@@ -119,6 +136,7 @@ export class Auth {
   // FORGOT PASSWORD
   // =========================
   async forgotPassword(email: string) {
+
     const { error } =
       await this.supabase.client.auth.resetPasswordForEmail(email);
 
@@ -126,17 +144,25 @@ export class Auth {
   }
 
   // =========================
-  // CLEAR CACHE + STATE
+  // CLEAR APP STATE
   // =========================
   private clearAppState() {
+
     this.isInitialized = false;
-    // optionally clear cache here
+
+    // optional:
+    // clear cache, menus, permissions, etc
   }
 
+  // =========================
+  // UPDATE PASSWORD
+  // =========================
   async updatePassword(newPassword: string) {
-    const { error } = await this.supabase.client.auth.updateUser({
-      password: newPassword
-    });
+
+    const { error } =
+      await this.supabase.client.auth.updateUser({
+        password: newPassword
+      });
 
     if (error) throw error;
   }

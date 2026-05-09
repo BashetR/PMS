@@ -3,10 +3,10 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { environment } from '../../../../environments/environment';
-import { Auth } from '../../../core/services/auth.service';
 import Swal from 'sweetalert2';
-import { FormValidationService } from '../../../core/services/form-validation.service';
+import { Auth } from '../../../core/services/auth.service';
 import { TitleService } from '../../../core/services/title.service';
+import { FormValidationService } from '../../../core/services/form-validation.service';
 import { LoaderService } from '../../../core/services/loader.service';
 
 @Component({
@@ -25,8 +25,12 @@ export class Register implements OnInit, OnDestroy {
   appLogo: any;
   copyright: any;
   isAssociate = false;
+  showPassword: boolean = false;
+  showConfirmPassword: boolean = false;
+  strength = 0;
+  strengthLabel = 'Weak';
 
-  constructor(private authService: Auth, private fb: FormBuilder, private titleService: TitleService, private formValidator: FormValidationService, private route: ActivatedRoute, private router: Router, private loader: LoaderService) {}
+  constructor(private authService: Auth, private fb: FormBuilder, private titleService: TitleService, private formValidator: FormValidationService, private route: ActivatedRoute, private router: Router, private loader: LoaderService) { }
 
   ngOnInit() {
     const associate = this.route.snapshot.queryParamMap.get('associate');
@@ -69,9 +73,28 @@ export class Register implements OnInit, OnDestroy {
   }
 
   passwordMatchValidator(g: FormGroup) {
-    return g.get('Password')?.value === g.get('ConfirmPassword')?.value
-      ? null
-      : { mismatch: true };
+    return g.get('Password')?.value === g.get('ConfirmPassword')?.value ? null : { mismatch: true };
+  }
+
+  togglePassword() {
+    this.showPassword = !this.showPassword;
+  }
+
+  toggleConfirmPassword() {
+    this.showConfirmPassword = !this.showConfirmPassword;
+  }
+
+  checkStrength(event: any) {
+    const value = event.target.value;
+    let score = 0;
+    if (value.length > 5) score++;
+    if (/[A-Z]/.test(value)) score++;
+    if (/[0-9]/.test(value)) score++;
+    if (/[@$!%*?&]/.test(value)) score++;
+    this.strength = (score / 4) * 100;
+    if (score <= 1) this.strengthLabel = 'Weak';
+    else if (score === 2) this.strengthLabel = 'Medium';
+    else this.strengthLabel = 'Strong';
   }
 
   CreateAssociateRegisterForm(as: any, lp: any, pdn: any, pk: any) {
@@ -103,7 +126,7 @@ export class Register implements OnInit, OnDestroy {
           icon: 'info'
         });
       } else {
-        this.router.navigate(['/dashboard']);
+        this.router.navigate(['/app/dashboard']);
       }
     } catch (error: any) {
       Swal.fire({

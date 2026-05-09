@@ -1,60 +1,3 @@
-<!-- <div class="card">
-    <div class="card-header">
-        <h1 class="card-title"><b>Roles</b></h1>
-    </div>
-
-    <div class="card-body">
-        <ul class="nav nav-tabs mb-3">
-            <li class="nav-item">
-                <a class="nav-link" [class.active]="activeTab === 'active'" (click)="activeTab = 'active'">
-                    Active Roles
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a class="nav-link" [class.active]="activeTab === 'inactive'" (click)="activeTab = 'inactive'">
-                    Inactive Roles
-                </a>
-            </li>
-        </ul>
-
-        <div class="table-responsive">
-            <table class="table table-bordered table-hover">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Description</th>
-                        <th>Status</th>
-                        <th>Created</th>
-                        <th style="width: 200px">Actions</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    <tr *ngIf="loading">
-                        <td colspan="5" class="text-center">Loading...</td>
-                    </tr>
-
-                    <tr *ngFor="let role of filteredRoles">
-                        <td>{{ role.name }}</td>
-                        <td>{{ role.description }}</td>
-                        <td>
-                            <span class="badge bg-success" *ngIf="role.is_active">Active</span>
-                            <span class="badge bg-danger" *ngIf="!role.is_active">Inactive</span>
-                        </td>
-                        <td>{{ role.created_at | date:'short' }}</td>
-                        <td>
-                            <button class="btn btn-primary btn-sm me-1" (click)="openPermissions(role)">Permissions</button>
-                            <button class="btn btn-warning btn-sm me-1" icon="edit">Edit</button>
-                            <button class="btn btn-danger btn-sm" icon="trash" (click)="deleteRole(role.id)">Delete</button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div> -->
-
 <div class="card">
     <div class="card-header">
         <h1 class="card-title"><b>Roles</b></h1>
@@ -99,11 +42,11 @@
                         <span class="badge bg-danger" *ngIf="!role.status">Inactive</span>
                     </td>
                     <td>{{ role.created_at | date:'short' }}</td>
-                    <td>
-                        <button class="btn btn-sm btn-primary me-1" (click)="openPermissions(role)">Permissions</button>
+                    <td class="d-flex gap-1">
+                        <button class="btn btn-sm btn-primary btn-sm" (click)="openPermissions(role)">Permissions</button>
                         <button *ngIf="can('view')" class="btn btn-info btn-sm" (click)="openViewModal(role)"><i class="fas fa-eye"></i></button>
-                        <button *ngIf="can('edit')" class="btn btn-sm btn-warning me-1" (click)="openEdit(role)"><i class="fas fa-edit"></i></button>
-                        <button *ngIf="can('delete')" class="btn btn-sm btn-danger" (click)="deleteRole(role.id)"><i class="fas fa-trash"></i></button>
+                        <button *ngIf="can('edit')" class="btn btn-sm btn-warning btn-sm" (click)="openEdit(role)"><i class="fas fa-edit"></i></button>
+                        <button *ngIf="can('delete')" class="btn btn-sm btn-danger btn-sm" (click)="deleteRole(role.id)"><i class="fas fa-trash"></i></button>
                     </td>
                 </tr>
             </tbody>

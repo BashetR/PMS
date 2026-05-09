@@ -1,12 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { RouterModule } from '@angular/router';
 import { environment } from '../../../../environments/environment';
-import { Auth } from '../../../core/services/auth.service';
 import Swal from 'sweetalert2';
-import { FormValidationService } from '../../../core/services/form-validation.service';
+import { Auth } from '../../../core/services/auth.service';
 import { TitleService } from '../../../core/services/title.service';
+import { FormValidationService } from '../../../core/services/form-validation.service';
 import { LoaderService } from '../../../core/services/loader.service';
 
 @Component({
@@ -16,28 +16,19 @@ import { LoaderService } from '../../../core/services/loader.service';
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
   styleUrl: './login.css',
 })
-export class Login implements OnInit, OnDestroy {
 
+export class Login implements OnInit, OnDestroy {
   loginForm!: FormGroup;
   appLogo: any;
   copyright: any;
+  showPassword: boolean = false;
 
-  constructor(
-    private authService: Auth,
-    private fb: FormBuilder,
-    private titleService: TitleService,
-    private formValidator: FormValidationService,
-    private route: ActivatedRoute,
-    private router: Router,
-    private loader: LoaderService
-  ) { }
+  constructor(private authService: Auth, private fb: FormBuilder, private titleService: TitleService, private formValidator: FormValidationService, private loader: LoaderService) { }
 
   ngOnInit() {
     this.createLoginForm();
     this.titleService.setTitle('Login');
-
     document.body.classList.add('login-page');
-
     this.appLogo = environment.logo;
     this.copyright = environment.copyright;
   }
@@ -53,35 +44,34 @@ export class Login implements OnInit, OnDestroy {
     });
   }
 
-  // =========================
-  // LOGIN (FIXED FLOW)
-  // =========================
-  async login() {
+  togglePassword() {
+    this.showPassword = !this.showPassword;
+  }
 
+  async login() {
     if (this.loginForm.invalid) {
       this.formValidator.validateAllFormFields(this.loginForm);
       return;
     }
-
     this.loader.show();
-
     try {
-
       await this.authService.login(this.loginForm.value);
-
-      const returnUrl =
-        this.route.snapshot.queryParamMap.get('returnUrl') || '/dashboard';
-
-      this.router.navigateByUrl(returnUrl);
-
+      // await this.authService.sendOtp(this.loginForm.value.Email);
+      // const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/otp';
+      // this.router.navigateByUrl(returnUrl, {
+      //   state: {
+      //     email: this.loginForm.value.Email
+      //   }
+      // });
+      // const returnUrl =
+      //   this.route.snapshot.queryParamMap.get('returnUrl') || '/app/dashboard';
+      // this.router.navigateByUrl(returnUrl);
     } catch (error: any) {
-
       Swal.fire({
         title: 'Login Failed',
         text: error.message || 'Invalid email or password',
         icon: 'error'
       });
-
     } finally {
       this.loader.hide();
     }

@@ -1,7 +1,11 @@
 import { Injectable } from '@angular/core';
-import { createClient, Session, SupabaseClient, User } from '@supabase/supabase-js';
+import {
+    createClient,
+    Session,
+    SupabaseClient,
+    User
+} from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
-
 
 @Injectable({
     providedIn: 'root'
@@ -9,6 +13,7 @@ import { environment } from '../../../environments/environment';
 export class SupabaseService {
 
     private supabase: SupabaseClient;
+    private channels: any[] = [];
 
     constructor() {
         this.supabase = createClient(
@@ -25,43 +30,41 @@ export class SupabaseService {
     }
 
     // =========================
-    // AUTH
+    // AUTH (SAFE + CONSISTENT)
     // =========================
     async getSession(): Promise<Session | null> {
-        const { data, error } = await this.supabase.auth.getSession();
-        if (error) {
-            console.error('Session error:', error);
-            return null;
-        }
+
+        const { data, error } =
+            await this.supabase.auth.getSession();
+
+        if (error) throw error;
+
         return data.session;
     }
 
     async getUser(): Promise<User | null> {
-        const { data, error } = await this.supabase.auth.getUser();
-        if (error) {
-            console.error('User error:', error);
-            return null;
-        }
+
+        const { data, error } =
+            await this.supabase.auth.getUser();
+
+        if (error) throw error;
+
         return data.user;
     }
 
-    signOut() {
-        return this.supabase.auth.signOut();
+    async signOut() {
+        return await this.supabase.auth.signOut();
     }
 
     onAuthChange(callback: (session: Session | null) => void) {
-        return this.supabase.auth.onAuthStateChange((_event, session) => {
-            callback(session);
-        });
-    }
 
-    async isLoggedIn(): Promise<boolean> {
-        const session = await this.getSession();
-        return !!session;
+        return this.supabase.auth.onAuthStateChange(
+            (_event, session) => callback(session)
+        );
     }
 
     // =========================
-    // CLEAN DATABASE ACCESS
+    // DB WRAPPER (SAFE ERROR THROWING)
     // =========================
     select(table: string, query = '*') {
         return this.supabase.from(table).select(query);
@@ -80,16 +83,26 @@ export class SupabaseService {
     }
 
     // =========================
-    // REALTIME (TRACK CHANNELS)
+    // REALTIME (IMPROVED)
     // =========================
-    private channels: any[] = [];
+    listen(
+        table: string,
+        callback: (payload: any) => void,
+        filter?: any
+    ) {
 
-    listen(table: string, callback: (payload: any) => void) {
+        const channelName = `${table}-changes`;
+
         const channel = this.supabase
-            .channel(`${table}-changes`)
+            .channel(channelName)
             .on(
                 'postgres_changes',
-                { event: '*', schema: 'public', table },
+                {
+                    event: '*',
+                    schema: 'public',
+                    table,
+                    filter
+                },
                 (payload) => callback(payload)
             )
             .subscribe();
@@ -100,9 +113,10 @@ export class SupabaseService {
     }
 
     // =========================
-    // CLEANUP REALTIME
+    // REMOVE ALL LISTENERS
     // =========================
     removeAllListeners() {
+
         this.channels.forEach(channel => {
             this.supabase.removeChannel(channel);
         });

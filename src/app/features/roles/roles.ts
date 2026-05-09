@@ -232,6 +232,6 @@ export class Roles implements OnInit, AfterViewInit {
 
   openPermissions(role: any) {
     if (!role?.id) return;
-    this.router.navigate(['/admin/role-permissions', role.id]);
+    this.router.navigate(['/app/admin/role-permissions', role.id]);
   }
 }

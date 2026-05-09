@@ -1,11 +1,10 @@
-import { Injectable, OnDestroy } from '@angular/core';
-import { SupabaseService } from './supabase.service';
-import { MenuService } from './menu.service';
-import { PermissionService } from './permission.service';
-import { RoleService } from './role.service';
-import { UserService } from './user.service';
-import { CacheService } from './cache.service';
-import { IdleService } from './idle.service';
+import { Injectable, OnDestroy } from "@angular/core";
+import { CacheService } from "./cache.service";
+import { MenuService } from "./menu.service";
+import { PermissionService } from "./permission.service";
+import { RoleService } from "./role.service";
+import { SupabaseService } from "./supabase.service";
+import { UserService } from "./user.service";
 
 @Injectable({ providedIn: 'root' })
 export class AppInitService implements OnDestroy {
@@ -14,87 +13,96 @@ export class AppInitService implements OnDestroy {
     private permissionDebounce: any;
     private profileDebounce: any;
 
+    private currentUserId!: string;
+    private currentRoleId!: number;
+
     constructor(
         private cache: CacheService,
         private userService: UserService,
         private roleService: RoleService,
         private permissionService: PermissionService,
         private menuService: MenuService,
-        private supabase: SupabaseService,
-        private idleService: IdleService
+        private supabase: SupabaseService
     ) { }
 
     // =========================
-    // INIT APP DATA
+    // INIT APP DATA (ONLY DATA LOADING)
     // =========================
     async loadInitialData() {
-        this.idleService.startWatching();
+
         // =========================
-        // STEP 1: AUTH USER
+        // 1. USER
         // =========================
         const user = await this.supabase.getUser();
         if (!user) return;
 
-        const userId = user.id;
+        this.currentUserId = user.id;
 
         // =========================
-        // STEP 2: PROFILE (SINGLE SOURCE OF TRUTH)
+        // 2. PROFILE (SINGLE SOURCE OF TRUTH CACHE KEY)
         // =========================
-        const profile = await this.userService.getProfile(userId);
+        const profile = await this.userService.getProfile(user.id);
         if (!profile) return;
 
-        this.cache.set('profile', profile);
+        this.cache.set(`profile_${user.id}`, profile);
 
-        const roleId = profile.role_id;
-
-        // =========================
-        // STEP 3: ROLE (FIXED - NO DUPLICATION)
-        // =========================
-        const role = await this.roleService.getById(roleId);
-        this.cache.set('role', role);
+        this.currentRoleId = profile.role_id;
 
         // =========================
-        // STEP 4: PERMISSIONS
+        // 3. ROLE
         // =========================
-        await this.permissionService.loadByRole(roleId);
+        const role = await this.roleService.getById(profile.role_id);
+        this.cache.set(`role_${profile.role_id}`, role);
 
         // =========================
-        // STEP 5: MENUS
+        // 4. PERMISSIONS
         // =========================
-        const menus = await this.menuService.getMenusByUser(userId);
-        this.cache.set('menus', menus);
+        await this.permissionService.loadByRole(profile.role_id);
 
         // =========================
-        // STEP 6: REALTIME SYNC
+        // 5. MENUS
         // =========================
-        this.initRealtime(userId, roleId);
+        const menus = await this.menuService.getMenusByUser(user.id);
+        this.cache.set(`menus_${user.id}`, menus);
+
+        // =========================
+        // 6. REALTIME SYNC
+        // =========================
+        this.initRealtime();
     }
 
     // =========================
-    // REALTIME SYSTEM
+    // REALTIME SYSTEM (FIXED)
     // =========================
-    private initRealtime(userId: string, roleId: number) {
+    private initRealtime() {
 
         // =========================
         // MENUS
         // =========================
         this.supabase.listen('menu', () => {
+
             clearTimeout(this.menuDebounce);
 
             this.menuDebounce = setTimeout(async () => {
-                const menus = await this.menuService.getMenusByUser(userId);
-                this.cache.set('menus', menus);
+
+                const menus = await this.menuService.getMenusByUser(this.currentUserId);
+
+                this.cache.set(`menus_${this.currentUserId}`, menus);
+
             }, 300);
         });
 
         // =========================
-        // PERMISSIONS (IMPORTANT)
+        // PERMISSIONS
         // =========================
         this.supabase.listen('role_menu_permission_relationship_map', () => {
+
             clearTimeout(this.permissionDebounce);
 
             this.permissionDebounce = setTimeout(async () => {
-                await this.permissionService.loadByRole(roleId);
+
+                await this.permissionService.loadByRole(this.currentRoleId);
+
             }, 300);
         });
 
@@ -102,26 +110,24 @@ export class AppInitService implements OnDestroy {
         // PROFILE (ROLE CHANGE SAFE)
         // =========================
         this.supabase.listen('profiles', () => {
+
             clearTimeout(this.profileDebounce);
 
             this.profileDebounce = setTimeout(async () => {
 
-                const profile = await this.userService.getProfile(userId);
-                this.cache.set('profile', profile);
+                const profile =
+                    await this.userService.getProfile(this.currentUserId);
 
-                if (profile?.role_id) {
+                this.cache.set(`profile_${this.currentUserId}`, profile);
 
-                    const newRoleId = profile.role_id;
+                if (profile?.role_id && profile.role_id !== this.currentRoleId) {
 
-                    // update role
-                    const role = await this.roleService.getById(newRoleId);
-                    this.cache.set('role', role);
+                    this.currentRoleId = profile.role_id;
 
-                    // reload permissions
-                    await this.permissionService.loadByRole(newRoleId);
+                    const role = await this.roleService.getById(profile.role_id);
+                    this.cache.set(`role_${profile.role_id}`, role);
 
-                    // update local reference for realtime
-                    roleId = newRoleId;
+                    await this.permissionService.loadByRole(profile.role_id);
                 }
 
             }, 300);
@@ -132,6 +138,7 @@ export class AppInitService implements OnDestroy {
     // CLEANUP
     // =========================
     ngOnDestroy() {
+
         this.supabase.removeAllListeners?.();
 
         clearTimeout(this.menuDebounce);

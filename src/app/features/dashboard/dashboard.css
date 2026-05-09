@@ -15,7 +15,6 @@
   gap: 10px;
 }
 
-/* PROFILE BUTTON */
 .profile {
   display: flex;
   align-items: center;
@@ -38,7 +37,6 @@
   font-weight: bold;
 }
 
-/* DROPDOWN */
 .dropdown {
   position: absolute;
   top: 55px;
