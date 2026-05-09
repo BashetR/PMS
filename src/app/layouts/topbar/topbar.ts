@@ -14,18 +14,16 @@ import { Auth } from '../../core/services/auth.service';
   styleUrl: './topbar.css'
 })
 export class Topbar implements OnInit {
-
   userName: string = 'User';
   userEmail: string = '';
   avatar: string = 'assets/images/profile_Image/avt.png';
-
   user: any;
   userId: string | null = null;
   roleId: number | null = null;
-
   treeMenus: any[] = [];
   openMenuId: number | null = null;
   userDropdownOpen = false;
+  isDarkMode = false;
 
   constructor(
     private supabase: SupabaseService,
@@ -40,15 +38,22 @@ export class Topbar implements OnInit {
 
     try {
       await this.loadUser();
-
       if (this.roleId) {
         await this.loadMenusByRole(this.roleId);
       }
-
     } catch (err) {
       console.error('TOPBAR INIT ERROR:', err);
     } finally {
       this.loader.hide();
+    }
+    
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+      document.body.classList.add('dark-theme');
+      this.isDarkMode = true;
+    } else {
+      document.body.classList.remove('dark-theme');
+      this.isDarkMode = false;
     }
   }
 
@@ -104,7 +109,7 @@ export class Topbar implements OnInit {
 
   goProfile(): void {
     this.closeMenus();
-    this.router.navigateByUrl('/profile');
+    this.router.navigateByUrl('/app/profile');
   }
 
   async logout(): Promise<void> {
@@ -125,5 +130,21 @@ export class Topbar implements OnInit {
   closeAll() {
     this.userDropdownOpen = false;
     this.openMenuId = null;
+  }
+
+  toggleTheme() {
+    this.isDarkMode ? this.enableLightMode() : this.enableDarkMode();
+  }
+
+  private enableDarkMode() {
+    document.body.classList.add('dark-theme');
+    localStorage.setItem('theme', 'dark');
+    this.isDarkMode = true;
+  }
+
+  private enableLightMode() {
+    document.body.classList.remove('dark-theme');
+    localStorage.setItem('theme', 'light');
+    this.isDarkMode = false;
   }
 }

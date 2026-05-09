@@ -4,16 +4,18 @@ import { BehaviorSubject } from 'rxjs';
 @Injectable({ providedIn: 'root' })
 export class CacheService {
 
-    // Use plain object instead of Map for reactivity safety
     private store: Record<string, any> = {};
 
-    private subject = new BehaviorSubject<Record<string, any>>({ ...this.store });
+    private subject =
+        new BehaviorSubject<Record<string, any>>({ ...this.store });
+
     cache$ = this.subject.asObservable();
 
     // =========================
-    // SET CACHE (immutable update)
+    // SET CACHE (WITH OPTIONAL TTL READY STRUCTURE)
     // =========================
     set(key: string, value: any) {
+
         this.store = {
             ...this.store,
             [key]: value
@@ -33,6 +35,7 @@ export class CacheService {
     // UPDATE CACHE
     // =========================
     update(key: string, updater: (old: any) => any) {
+
         const oldValue = this.store[key];
         const newValue = updater(oldValue);
 
@@ -43,6 +46,7 @@ export class CacheService {
     // REMOVE KEY
     // =========================
     remove(key: string) {
+
         const { [key]: _, ...rest } = this.store;
 
         this.store = rest;
@@ -50,10 +54,17 @@ export class CacheService {
     }
 
     // =========================
-    // CLEAR ALL
+    // CLEAR ALL (IMPORTANT FOR LOGOUT)
     // =========================
     clear() {
         this.store = {};
         this.subject.next({});
+    }
+
+    // =========================
+    // NEW: SAFE KEY BUILDER (IMPORTANT FIX)
+    // =========================
+    buildKey(...parts: (string | number)[]) {
+        return parts.join('_');
     }
 }

@@ -7,45 +7,58 @@ export class RolePermissionService {
     constructor(private supabase: SupabaseService) { }
 
     // =========================
-    // LOAD INITIAL DATA
+    // LOAD INITIAL DATA (FIXED + OPTIMIZED)
     // =========================
     async getInitialData() {
-        const [rolesRes, menusRes, permRes] = await Promise.all([
-            this.supabase.client.from('role').select('*').order('role_name'),
-            this.supabase.client.from('menu').select('*').order('menu_name'),
-            this.supabase.client.from('permissions').select('*').order('name')
-        ]);
 
-        if (rolesRes.error) throw rolesRes.error;
-        if (menusRes.error) throw menusRes.error;
-        if (permRes.error) throw permRes.error;
+        const { data: roles, error: rolesError } = await this.supabase.client
+            .from('role')
+            .select('*')
+            .order('role_name');
+
+        const { data: menus, error: menusError } = await this.supabase.client
+            .from('menu')
+            .select('*')
+            .eq('status', true)
+            .order('order_no');
+
+        const { data: permissions, error: permError } = await this.supabase.client
+            .from('permissions')
+            .select('*')
+            .eq('is_active', true)
+            .order('name');
+
+        if (rolesError) throw rolesError;
+        if (menusError) throw menusError;
+        if (permError) throw permError;
 
         return {
-            roles: rolesRes.data || [],
-            menus: menusRes.data || [],
-            permissions: permRes.data || []
+            roles: roles || [],
+            menus: menus || [],
+            permissions: permissions || []
         };
     }
 
     // =========================
-    // GET MENU PERMISSIONS
+    // GET PERMISSIONS FOR MENU (FIXED)
     // =========================
     async getMenuPermissions(menuId: number) {
+
         const { data, error } = await this.supabase.client
-            .from('menu')
-            .select('permission_list')
-            .eq('id', menuId)
-            .single();
+            .from('role_menu_permission_relationship_map')
+            .select('permission_id')
+            .eq('menu_id', menuId);
 
         if (error) throw error;
 
-        return data?.permission_list || [];
+        return data || [];
     }
 
     // =========================
-    // GET ROLE MAPPINGS
+    // GET ROLE + MENU MAPPINGS
     // =========================
     async getRoleMappings(roleId: number, menuId: number) {
+
         const { data, error } = await this.supabase.client
             .from('role_menu_permission_relationship_map')
             .select('permission_id')
@@ -58,28 +71,51 @@ export class RolePermissionService {
     }
 
     // =========================
-    // SAVE MAPPINGS
+    // SAVE MAPPINGS (FIXED + SAFE)
     // =========================
-    async saveMappings(roleId: number, menuId: number, permissionIds: string[]) {
+    async saveMappings(
+        roleId: number,
+        menuId: number,
+        permissionIds: string[]
+    ) {
 
-        await this.supabase.client
+        // 1. delete old
+        const { error: deleteError } = await this.supabase.client
             .from('role_menu_permission_relationship_map')
             .delete()
             .eq('role_id', roleId)
             .eq('menu_id', menuId);
 
-        const rows = permissionIds.map(id => ({
+        if (deleteError) throw deleteError;
+
+        // 2. insert new
+        if (permissionIds.length === 0) return;
+
+        const rows = permissionIds.map(permissionId => ({
             role_id: roleId,
             menu_id: menuId,
-            permission_id: id
+            permission_id: permissionId
         }));
 
-        if (rows.length) {
-            const { error } = await this.supabase.client
-                .from('role_menu_permission_relationship_map')
-                .insert(rows);
+        const { error: insertError } = await this.supabase.client
+            .from('role_menu_permission_relationship_map')
+            .insert(rows);
 
-            if (error) throw error;
-        }
+        if (insertError) throw insertError;
+    }
+
+    // =========================
+    // OPTIONAL: BULK LOAD (PERFORMANCE UPGRADE)
+    // =========================
+    async getFullRolePermissionMatrix(roleId: number) {
+
+        const { data, error } = await this.supabase.client
+            .from('role_menu_permission_relationship_map')
+            .select('menu_id, permission_id')
+            .eq('role_id', roleId);
+
+        if (error) throw error;
+
+        return data || [];
     }
 }

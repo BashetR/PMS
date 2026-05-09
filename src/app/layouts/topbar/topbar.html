@@ -26,6 +26,12 @@
     </ul>
 
     <ul class="navbar-nav ms-auto align-items-center">
+        <li class="nav-item me-2">
+            <button class="btn btn-sm btn-outline-secondary" (click)="toggleTheme()">
+                <i [class]="isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
+            </button>
+        </li>
+
         <li class="nav-item dropdown">
             <a class="nav-link">
                 <i class="bi bi-bell-fill"></i>
@@ -40,12 +46,14 @@
         </li>
 
         <li class="nav-item dropdown user-menu position-relative">
-            <a class="nav-link d-flex align-items-center" href="#" (click)="toggleUserDropdown(); $event.preventDefault()">
+            <a class="nav-link d-flex align-items-center" href="#"
+                (click)="toggleUserDropdown(); $event.preventDefault()">
                 <img [src]="avatar" class="rounded-circle me-2" style="width:32px;height:32px">
                 <span class="d-none d-md-inline">{{ userName }}</span>
             </a>
 
-            <ul class="dropdown-menu dropdown-menu-end shadow" *ngIf="userDropdownOpen" style="display:block; position:absolute; right:0; min-width:250px; z-index:999;">
+            <ul class="dropdown-menu dropdown-menu-end shadow" *ngIf="userDropdownOpen"
+                style="display:block; position:absolute; right:0; min-width:250px; z-index:999;">
                 <li class="user-header text-bg-primary text-center p-3">
                     <img [src]="avatar" class="rounded-circle mb-2" style="width:60px;height:60px">
                     <p class="mb-0 fw-bold">{{ userName }}</p>

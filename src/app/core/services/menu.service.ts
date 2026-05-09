@@ -266,11 +266,11 @@ export class MenuService {
 
         const payload = { ...menu };
 
-        if (payload.permission_list) {
-            payload.permission_list = payload.permission_list.map((id: number) => ({
-                permission_id: id
-            }));
-        }
+        // if (payload.permission_list) {
+        //     payload.permission_list = payload.permission_list.map((id: number) => ({
+        //         permission_id: id
+        //     }));
+        // }
 
         if (payload.menu_type === 'menu') {
             payload.parent_id = null;

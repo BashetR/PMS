@@ -85,7 +85,8 @@ export class PermissionService {
       'Is_Add': 'create',
       'Is_View': 'view',
       'Is_Edit': 'edit',
-      'Is_Delete': 'delete'
+      'Is_Delete': 'delete',
+      'Assign_Permission': 'assign'
     };
 
     return map[name] ?? name.toLowerCase();
@@ -99,7 +100,7 @@ export class PermissionService {
     const { data, error } = await this.supabase.client
       .from('permissions')
       .select('*')
-      .eq('is_active', true);
+      .order('id', { ascending: true });
 
     if (error) throw error;
     return data || [];

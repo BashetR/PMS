@@ -1,10 +1,11 @@
 <div class="content-wrapper">
 
-    <!-- ================= HEADER ================= -->
+    <!-- HEADER -->
     <section class="content-header">
         <div class="container-fluid">
 
             <div class="row mb-2">
+
                 <div class="col-sm-6">
                     <h4 class="mb-0">Role Permission Management</h4>
                 </div>
@@ -12,33 +13,31 @@
                 <div class="col-sm-6 text-right">
                     <ol class="breadcrumb float-sm-right">
                         <li class="breadcrumb-item">
-                            <a routerLink="/dashboard">Dashboard</a>
+                            <a routerLink="/app/dashboard">Dashboard</a>
                         </li>
-                        <li class="breadcrumb-item active">
-                            Role Permission
-                        </li>
+                        <li class="breadcrumb-item active">Role Permission</li>
                     </ol>
                 </div>
+
             </div>
 
         </div>
     </section>
 
-    <!-- ================= MAIN ================= -->
+    <!-- BODY -->
     <section class="content">
         <div class="container-fluid">
 
             <div class="row">
 
-                <!-- ================= LEFT PANEL ================= -->
+                <!-- LEFT PANEL -->
                 <div class="col-lg-4 col-md-5 col-12">
 
                     <div class="card card-primary card-outline">
 
                         <div class="card-header">
                             <h5 class="card-title">
-                                <i class="fas fa-cogs me-1"></i>
-                                Configuration
+                                <i class="fas fa-cogs me-1"></i> Configuration
                             </h5>
                         </div>
 
@@ -46,19 +45,24 @@
 
                             <!-- ROLE -->
                             <div class="form-group mb-3">
+
                                 <label>Role</label>
 
-                                <select class="form-control" [(ngModel)]="selectedRole">
+                                <select class="form-control" [(ngModel)]="selectedRole" (change)="onRoleChange()">
+
                                     <option [ngValue]="null">Select Role</option>
 
                                     <option *ngFor="let r of roles" [ngValue]="r.id">
                                         {{ r.role_name }}
                                     </option>
+
                                 </select>
+
                             </div>
 
                             <!-- MENU -->
                             <div class="form-group mb-3">
+
                                 <label>Menu</label>
 
                                 <select class="form-control" [(ngModel)]="selectedMenu" (change)="onMenuChange()">
@@ -70,11 +74,8 @@
                                     </option>
 
                                 </select>
-                            </div>
 
-                            <!-- <button class="btn btn-primary w-100" (click)="onMenuChange()" [disabled]="!selectedMenu">
-                                Load Permissions
-                            </button> -->
+                            </div>
 
                         </div>
 
@@ -82,15 +83,14 @@
 
                 </div>
 
-                <!-- ================= RIGHT PANEL ================= -->
+                <!-- RIGHT PANEL -->
                 <div class="col-lg-8 col-md-7 col-12">
 
                     <div class="card card-success card-outline">
 
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="card-title mb-0">
-                                <i class="fas fa-shield-alt me-1"></i>
-                                Permissions
+                        <div class="card-header">
+                            <h5 class="card-title">
+                                <i class="fas fa-shield-alt me-1"></i> Permissions
                             </h5>
                         </div>
 
@@ -101,13 +101,11 @@
 
                                 <i class="fas fa-lock fa-2x mb-3"></i>
 
-                                <p class="mb-0">
-                                    Select role and menu to view permissions
-                                </p>
+                                <p>Select role and menu to view permissions</p>
 
                             </div>
 
-                            <!-- PERMISSIONS GRID -->
+                            <!-- PERMISSION LIST -->
                             <div class="row" *ngIf="filteredPermissions.length > 0">
 
                                 <div class="col-xl-4 col-lg-6 col-md-6 col-12" *ngFor="let p of filteredPermissions">
@@ -116,25 +114,32 @@
 
                                         <div class="card-body">
 
-                                            <!-- CHECKBOX -->
                                             <div class="form-check">
 
                                                 <input type="checkbox" class="form-check-input" [id]="'perm-' + p.id"
                                                     [checked]="isChecked(p.id)"
-                                                    (change)="togglePermission(p.id, $event)">
+                                                    (change)="togglePermission(p.id, $event)" />
 
                                                 <label class="form-check-label fw-bold" [for]="'perm-' + p.id">
 
-                                                    {{ p.name }}
+                                                    <span [class.text-success]="isChecked(p.id)"
+                                                        [class.text-muted]="!isChecked(p.id)">
+                                                        {{ p.name }}
+                                                    </span>
 
                                                 </label>
 
                                             </div>
 
-                                            <!-- DESCRIPTION -->
                                             <small class="text-muted d-block mt-1">
                                                 {{ p.description }}
                                             </small>
+
+                                            <!-- STATUS BADGE -->
+                                            <span class="badge mt-2" [class.bg-success]="isChecked(p.id)"
+                                                [class.bg-secondary]="!isChecked(p.id)">
+                                                {{ isChecked(p.id) ? 'Assigned' : 'Not Assigned' }}
+                                            </span>
 
                                         </div>
 
@@ -146,7 +151,7 @@
 
                         </div>
 
-                        <!-- SAVE BUTTON -->
+                        <!-- FOOTER -->
                         <div class="card-footer text-right">
 
                             <button class="btn btn-success btn-sm" (click)="saveAll()"

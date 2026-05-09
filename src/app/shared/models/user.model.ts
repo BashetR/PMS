@@ -1,8 +1,16 @@
 export interface User {
   id: string;
-  full_name: string;
   email: string;
-  role: string;
+  username: string;
+  full_name: string;
+  website: string;
+  country: string;
+  gender: string;
+  phone: string;
+  avatar_url: string;
   is_active: boolean;
-  last_login: string;
+  created_at: string;
+  updated_at: string;
+  doctor_reg_no: string;
+  role_id: number;
 }

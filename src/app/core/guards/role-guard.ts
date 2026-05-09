@@ -18,38 +18,76 @@ export class RoleGuard implements CanActivate {
 
     async canActivate(route: ActivatedRouteSnapshot): Promise<boolean | any> {
 
-        // =========================
-        // 1. GET USER (SAFE)
-        // =========================
-        const user = await this.cache.get<any>('auth_user')
-            ?? await this.supabase.getUser();
+        try {
 
-        if (!user) {
+            // =========================
+            // 1. GET USER (SAFE)
+            // =========================
+            const user =
+                await this.cache.get<any>('auth_user')
+                ?? await this.supabase.getUser();
+
+            if (!user) {
+                return this.router.createUrlTree(['/login']);
+            }
+
+            this.cache.set('auth_user', user);
+
+            // =========================
+            // 2. GET PROFILE (MUST BE RELIABLE)
+            // =========================
+            let profile =
+                await this.cache.get<any>(`profile_${user.id}`);
+
+            if (!profile) {
+
+                const { data } = await this.supabase.client
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single();
+
+                profile = data;
+
+                if (profile) {
+                    this.cache.set(`profile_${user.id}`, profile);
+                }
+            }
+
+            if (!profile) {
+                await this.supabase.signOut();
+                return this.router.createUrlTree(['/login']);
+            }
+
+            // =========================
+            // 3. CHECK ROLE ID (ROBUST)
+            // =========================
+            const allowedRoles = route.data['roles'] as number[];
+
+            if (!allowedRoles || !allowedRoles.length) {
+                return true; // no restriction
+            }
+
+            if (!allowedRoles.includes(profile.role_id)) {
+                return this.router.createUrlTree(['/unauthorized']);
+            }
+
+            // =========================
+            // 4. OPTIONAL: ORGANIZATION SAFETY
+            // =========================
+            // const routeOrgId = route.data['organization_id'];
+
+            // if (routeOrgId && profile.organization_id !== routeOrgId) {
+            //     return this.router.createUrlTree(['/unauthorized']);
+            // }
+
+            return true;
+
+        } catch (err) {
+
+            await this.supabase.signOut();
+
             return this.router.createUrlTree(['/login']);
         }
-
-        this.cache.set('auth_user', user);
-
-        // =========================
-        // 2. GET ROLE (CACHED SERVICE)
-        // =========================
-        const profile = await this.cache.get<any>(`profile_${user.id}`);
-
-        const roleData = profile?.role_id
-            ? await this.roleService.getById(profile.role_id)
-            : null;
-
-        const roleName = roleData?.role_name;
-
-        // =========================
-        // 3. SAFE ROLE CHECK
-        // =========================
-        const allowedRoles = route.data['roles'] as string[];
-
-        if (!allowedRoles || !roleName || !allowedRoles.includes(roleName)) {
-            return this.router.createUrlTree(['/unauthorized']);
-        }
-
-        return true;
     }
 }

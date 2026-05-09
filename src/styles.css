@@ -3,7 +3,8 @@
     --font-normal: 14px;
     --font-medium: 16px;
     --font-large: 18px;
-    --primary-color: #3c8dbc;   /* AdminLTE blue */
+    --primary-color: #3c8dbc;
+    /* AdminLTE blue */
     --secondary-color: #6c757d;
     --bg-color: #f4f6f9;
     --card-bg: #ffffff;
@@ -29,4 +30,77 @@ body {
 
 .card-lg {
     max-width: 900px;
+}
+
+body.dark-theme {
+    background-color: #121212 !important;
+    color: #e0e0e0 !important;
+}
+
+/* Navbar */
+body.dark-theme .navbar {
+    background-color: #1e1e1e !important;
+}
+
+/* Cards */
+body.dark-theme .card {
+    background-color: #1e1e1e !important;
+    color: #e0e0e0 !important;
+}
+
+/* Table */
+body.dark-theme table {
+    color: #e0e0e0;
+    background-color: #1e1e1e;
+}
+
+/* Inputs */
+body.dark-theme input,
+body.dark-theme select,
+body.dark-theme textarea {
+    background-color: #2a2a2a;
+    color: #fff;
+    border-color: #444;
+}
+
+body.dark-theme .main-header.navbar {
+    background-color: #1e1e1e !important;
+    border-bottom: 1px solid #333;
+}
+
+/* NAV LINKS */
+body.dark-theme .main-header .nav-link {
+    color: #e0e0e0 !important;
+}
+
+/* ICONS */
+body.dark-theme .main-header .nav-link i,
+body.dark-theme .main-header .nav-item i {
+    color: #e0e0e0 !important;
+}
+
+/* DROPDOWN MENU */
+body.dark-theme .dropdown-menu {
+    background-color: #1e1e1e !important;
+    border: 1px solid #333;
+}
+
+body.dark-theme .dropdown-item {
+    color: #e0e0e0 !important;
+}
+
+body.dark-theme .dropdown-item:hover {
+    background-color: #2a2a2a !important;
+}
+
+/* BADGES */
+body.dark-theme .badge {
+    background-color: #ffb300 !important;
+    color: #000 !important;
+}
+
+/* USER HEADER */
+body.dark-theme .user-header {
+    background-color: #2a2a2a !important;
+    color: #e0e0e0 !important;
 }

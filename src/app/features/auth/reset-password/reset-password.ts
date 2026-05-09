@@ -2,11 +2,11 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
-import { SupabaseService } from '../../../core/services/supabase.service';
 import { environment } from '../../../../environments/environment';
 import Swal from 'sweetalert2';
-import { FormValidationService } from '../../../core/services/form-validation.service';
+import { SupabaseService } from '../../../core/services/supabase.service';
 import { TitleService } from '../../../core/services/title.service';
+import { FormValidationService } from '../../../core/services/form-validation.service';
 import { LoaderService } from '../../../core/services/loader.service';
 
 @Component({
@@ -23,6 +23,8 @@ export class ResetPassword implements OnInit {
   appName: any;
   appLogo: any;
   copyright: any;
+  showPassword: boolean = false;
+  showConfirmPassword: boolean = false;
 
   constructor(private fb: FormBuilder, private supabase: SupabaseService, private router: Router, private titleService: TitleService, private formValidator: FormValidationService, private loader: LoaderService) { }
 
@@ -52,9 +54,15 @@ export class ResetPassword implements OnInit {
   }
 
   passwordMatchValidator(group: FormGroup) {
-    return group.get('Password')?.value === group.get('ConfirmPassword')?.value
-      ? null
-      : { mismatch: true };
+    return group.get('Password')?.value === group.get('ConfirmPassword')?.value ? null : { mismatch: true };
+  }
+
+  togglePassword() {
+    this.showPassword = !this.showPassword;
+  }
+
+  toggleConfirmPassword() {
+    this.showConfirmPassword = !this.showConfirmPassword;
   }
 
   async resetPassword() {
@@ -65,7 +73,6 @@ export class ResetPassword implements OnInit {
     this.loader.show();
     try {
       const password = this.resetPasswordForm.value.Password;
-
       const { error } = await this.supabase.client.auth.updateUser({
         password: password
       });
@@ -77,7 +84,6 @@ export class ResetPassword implements OnInit {
         text: 'Password updated successfully',
         icon: 'success'
       });
-
       this.router.navigate(['/login']);
     } catch (error: any) {
       Swal.fire({

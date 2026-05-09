@@ -6,6 +6,8 @@ import { SupabaseService } from './supabase.service';
 export class IdleService {
 
     private timeout: any;
+    private listenersAdded = false;
+
     private readonly TIME_LIMIT = 60 * 60 * 1000; // 1 hour
 
     constructor(
@@ -14,16 +16,40 @@ export class IdleService {
         private ngZone: NgZone
     ) { }
 
+    // =========================
+    // START WATCHING (CALL AFTER LOGIN)
+    // =========================
     startWatching() {
+
         this.resetTimer();
 
-        // user activity events
-        ['click', 'mousemove', 'keydown', 'scroll', 'touchstart']
-            .forEach(event => {
-                window.addEventListener(event, () => this.resetTimer());
-            });
+        if (!this.listenersAdded) {
+            this.addEventListeners();
+            this.listenersAdded = true;
+        }
     }
 
+    // =========================
+    // EVENTS
+    // =========================
+    private addEventListeners() {
+
+        const events = [
+            'click',
+            'mousemove',
+            'keydown',
+            'scroll',
+            'touchstart'
+        ];
+
+        events.forEach(event => {
+            window.addEventListener(event, () => this.resetTimer());
+        });
+    }
+
+    // =========================
+    // RESET TIMER
+    // =========================
     private resetTimer() {
         clearTimeout(this.timeout);
 
@@ -32,14 +58,26 @@ export class IdleService {
         }, this.TIME_LIMIT);
     }
 
+    // =========================
+    // LOGOUT
+    // =========================
     private async logoutUser() {
+
         await this.supabase.signOut();
+
+        this.stopWatching();
+
         this.router.navigate(['/login']);
 
         alert('Session expired due to inactivity');
     }
 
+    // =========================
+    // STOP WATCHING
+    // =========================
     stopWatching() {
+
         clearTimeout(this.timeout);
+        this.timeout = null;
     }
 }
