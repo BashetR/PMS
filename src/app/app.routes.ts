@@ -50,6 +50,26 @@ export const routes: Routes = [
         loadComponent: () => import('./features/profile/profile').then(m => m.Profile)
       },
       {
+        path: 'generic-setup',
+        loadComponent: () => import('./features/medicine_setup/generic-setup/generic-setup').then(m => m.GenericSetup)
+      },
+      {
+        path: 'dosage-form',
+        loadComponent: () => import('./features/medicine_setup/dosage-form/dosage-form').then(m => m.DosageForm)
+      },
+      {
+        path: 'manufacturer',
+        loadComponent: () => import('./features/medicine_setup/manufacturer/manufacturer').then(m => m.Manufacturer)
+      },
+      {
+        path: 'medicine',
+        loadComponent: () => import('./features/medicine_setup/medicine/medicine').then(m => m.Medicine)
+      },
+      {
+        path: 'clinical-kv',
+        loadComponent: () => import('./features/clinical-kv/clinical-kv').then(m => m.ClinicalKv)
+      },
+      {
         path: 'admin',
         canActivate: [RoleGuard],
         data: { roles: [2] },

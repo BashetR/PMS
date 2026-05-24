@@ -1,0 +1,269 @@
+<div class="card">
+
+    <div class="card-header">
+
+        <h3 class="card-title">
+            <b>Clinical Key & Value</b>
+        </h3>
+
+        <div class="card-tools">
+
+            <button *ngIf="can('create')" class="btn btn-primary btn-sm" (click)="openCreateModal()">
+
+                <i class="fas fa-plus"></i>
+                Add
+
+            </button>
+
+        </div>
+
+    </div>
+
+    <div class="card-body">
+
+        <ul class="nav nav-pills mb-3">
+
+            <li class="nav-item">
+                <a class="nav-link" [class.active]="activeTab === 'active'" (click)="changeTab('active')">
+
+                    Active
+
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" [class.active]="activeTab === 'inactive'" (click)="changeTab('inactive')">
+
+                    Inactive
+
+                </a>
+            </li>
+
+        </ul>
+
+        <div class="table-responsive">
+
+            <table class="table table-bordered table-hover">
+
+                <thead>
+
+                    <tr>
+
+                        <th>#</th>
+
+                        <th>Clinical Key</th>
+
+                        <th>Clinical Value</th>
+
+                        <th>Status</th>
+
+                        <th width="150">
+                            Actions
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    <tr *ngIf="!paginatedData.length">
+
+                        <td colspan="5" class="text-center">
+
+                            No Records Found
+
+                        </td>
+
+                    </tr>
+
+                    <tr *ngFor="let row of paginatedData; let i=index">
+
+                        <td>{{ i + 1 }}</td>
+
+                        <td>
+                            {{ row.clinical_key?.name }}
+                        </td>
+
+                        <td>
+                            {{ row.clinical_value }}
+                        </td>
+
+                        <td>
+
+                            <span *ngIf="row.is_active" class="badge bg-success">
+
+                                Active
+
+                            </span>
+
+                            <span *ngIf="!row.is_active" class="badge bg-danger">
+
+                                Inactive
+
+                            </span>
+
+                        </td>
+
+                        <td>
+
+                            <button *ngIf="can('view')" class="btn btn-info btn-sm me-1" (click)="openViewModal(row)">
+
+                                <i class="fas fa-eye"></i>
+
+                            </button>
+
+                            <button *ngIf="can('edit')" class="btn btn-warning btn-sm me-1"
+                                (click)="openEditModal(row)">
+
+                                <i class="fas fa-edit"></i>
+
+                            </button>
+
+                            <button *ngIf="can('delete')" class="btn btn-danger btn-sm" (click)="confirmDelete(row)">
+
+                                <i class="fas fa-trash"></i>
+
+                            </button>
+
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Modal -->
+
+<div class="modal fade" id="clinicalModal" tabindex="-1">
+
+    <div class="modal-dialog modal-lg">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title">
+
+                    {{
+                    isViewMode
+                    ? 'View Clinical Value'
+                    : isEditMode
+                    ? 'Edit Clinical Value'
+                    : 'Create Clinical Value'
+                    }}
+
+                </h5>
+
+            </div>
+
+            <div class="modal-body">
+
+                <form [formGroup]="form">
+
+                    <table class="table table-bordered">
+
+                        <thead>
+
+                            <tr>
+
+                                <th width="40%">
+                                    Clinical Key
+                                </th>
+
+                                <th width="40%">
+                                    Clinical Value
+                                </th>
+
+                                <th *ngIf="!isEditMode && !isViewMode" width="20%">
+
+                                    Action
+
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody formArrayName="rows">
+
+                            <tr *ngFor="let row of rows.controls; let i=index" [formGroupName]="i">
+
+                                <td>
+
+                                    <select class="form-select" formControlName="clinical_key_id">
+
+                                        <option [ngValue]="null">
+                                            Select Key
+                                        </option>
+
+                                        <option *ngFor="let key of clinicalKeys" [ngValue]="key.id">
+
+                                            {{ key.name }}
+
+                                        </option>
+
+                                    </select>
+
+                                </td>
+
+                                <td>
+
+                                    <input type="text" class="form-control" formControlName="clinical_value">
+
+                                </td>
+
+                                <td *ngIf="!isEditMode && !isViewMode">
+
+                                    <button type="button" class="btn btn-success btn-sm" (click)="addRow()">
+
+                                        <i class="fas fa-plus"></i>
+
+                                    </button>
+
+                                    <button type="button" class="btn btn-danger btn-sm ms-1" (click)="removeRow(i)">
+
+                                        <i class="fas fa-minus"></i>
+
+                                    </button>
+
+                                </td>
+
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </form>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button *ngIf="!isViewMode" class="btn btn-primary" (click)="save()">
+
+                    Save
+
+                </button>
+
+                <button class="btn btn-secondary" (click)="closeModal()">
+
+                    Close
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
